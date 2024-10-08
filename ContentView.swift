@@ -1,10 +1,11 @@
 import SwiftUI
 import Foundation
+import Combine
 
 struct ContentView: View {
     @State private var startingX = String()
     @State private var startingY = String()
-    @State private var angle = String()
+    @State private var angle = Int(0)
     @State private var length = String()
     @State private var direction = String()
     @State private var result = [Float(0.0), Float(0.0)]
@@ -12,6 +13,8 @@ struct ContentView: View {
     @State private var espData: String = "Loading..."
     @State private var alertMessage = ""
     @State private var showAlert = false
+    @State private var timer: AnyCancellable?
+    
     
     // Provide the starting point on the canvas and angle angle
     // of the arm. Returns where the end point is.
@@ -50,6 +53,23 @@ struct ContentView: View {
         return "(\(point.x), \(point.y))"
     }
     
+    func intToAngle(integer: Int) -> Int {
+        if(integer > 1910) {
+            return -45
+        }
+        if(integer < 410) {
+            return 45
+        }
+        if(integer >= 1180) {
+            let zeroed = -(integer - 1180)
+            let angle = Int(Double(zeroed) / 17.111)
+            return angle;
+        }
+        let zeroed = -(integer - 1180)
+        let angle = Int(Double(zeroed) / 16.222)
+        return angle
+    }
+    
     func fetchESP32Data() {
         let url = URL(string: "http://192.168.4.1/angle")!
         let task = URLSession.shared.dataTask(with: url) {data, response, error in
@@ -60,7 +80,9 @@ struct ContentView: View {
             if let data = data, let responseString = String(data: data, encoding: .utf8) {
                 print("Response:", responseString)
                 DispatchQueue.main.async {
-                    self.angle = responseString
+                    let tempAngle = Int(responseString) ?? 0
+                    angle = intToAngle(integer: tempAngle);
+                    
                 }
             }
         }
@@ -70,7 +92,7 @@ struct ContentView: View {
     var body: some View {
         VStack {
             
-            Text(angle)
+            Text(String(angle))
             Button("Fetch data", action: fetchESP32Data)
                 .padding()
                 .background(Color.blue)
@@ -80,9 +102,20 @@ struct ContentView: View {
                 .alert(isPresented: $showAlert) {
                     Alert(title: Text("Error"),
                           message: Text(self.alertMessage),
-                        dismissButton: .default(Text("OK"))
+                          dismissButton: .default(Text("OK"))
                     )
                 }
+        }
+        .onAppear() {
+            timer = Timer.publish(every: 0.25, on: .main, in: .common)
+                .autoconnect()
+                .sink { _ in
+                    fetchESP32Data()
+                }
+        }
+        .onDisappear() {
+            timer?.cancel()
+            timer = nil
         }
     }
 }
