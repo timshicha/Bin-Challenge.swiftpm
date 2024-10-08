@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 struct ContentView: View {
     @State private var startingX = String()
@@ -8,6 +9,9 @@ struct ContentView: View {
     @State private var direction = String()
     @State private var result = [Float(0.0), Float(0.0)]
     @State private var resultString = String()
+    @State private var espData: String = "Loading..."
+    @State private var alertMessage = ""
+    @State private var showAlert = false
     
     // Provide the starting point on the canvas and angle angle
     // of the arm. Returns where the end point is.
@@ -46,54 +50,39 @@ struct ContentView: View {
         return "(\(point.x), \(point.y))"
     }
     
-    var body: some View {
-        VStack {
-            Text("Starting X: ")
-            TextField("", text: $startingX)
-                .keyboardType(.decimalPad)
-                .padding()
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-            Text("Starting Y: ")
-            TextField("", text: $startingY)
-                .keyboardType(.decimalPad)
-                .padding()
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-            Text("Angle: ")
-            TextField("", text: $angle)
-                .keyboardType(.decimalPad)
-                .padding()
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-            Text("Length: ")
-            TextField("", text: $length)
-                .keyboardType(.decimalPad)
-                .padding()
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-            Text("Direction: ")
-            Picker("", selection: $direction) {
-                ForEach(["Left", "Right"], id: \.self) {
-                    dir in Text(dir)
+    func fetchESP32Data() {
+        let url = URL(string: "http://192.168.4.1/angle")!
+        let task = URLSession.shared.dataTask(with: url) {data, response, error in
+            if let error = error {
+                print("Error:", error)
+                return
+            }
+            if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                print("Response:", responseString)
+                DispatchQueue.main.async {
+                    self.angle = responseString
                 }
             }
-            .pickerStyle(MenuPickerStyle())
+        }
+        task.resume()
+    }
+    
+    var body: some View {
+        VStack {
             
-            Text("End point: " + resultString)
-            
-            Button(action: {
-                let startX = Float(startingX) ?? Float(0.0)
-                let startY = Float(startingY) ?? Float(0.0)
-                let angle = Float(self.angle) ?? Float(0.0)
-                let length = Float(self.length) ?? Float(0.0)
-                let direction = self.direction
-                
-                self.resultString = CGPointToString(point: getLineCoords(startX: startX, startY: startY, angle: angle, length: length, direction: direction))
-            }) {
-                Text("Calculate")
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-            }
-            .padding()
+            Text(angle)
+            Button("Fetch data", action: fetchESP32Data)
+                .padding()
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+                .padding()
+                .alert(isPresented: $showAlert) {
+                    Alert(title: Text("Error"),
+                          message: Text(self.alertMessage),
+                        dismissButton: .default(Text("OK"))
+                    )
+                }
         }
     }
 }
