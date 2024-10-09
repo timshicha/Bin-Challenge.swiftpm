@@ -1,18 +1,16 @@
-// This file sets up the ESP32 as a server to send angle data
-// to the app through WiFi.
-
 #include <WiFi.h>
 #include <WebServer.h>
 
 // Set SSID and password for server
 const char* ssid = "Bin Challenge";
-const char* password = "password"; // Replace will your password
-float angle = 0.0;
+const char* password = ""; // Set a password
+int upperArmAngle = 0;
+int lowerArmAngle = 0;
 
-// Get the angle of the sensor and update angle
-// (random for now)
-void updateAngle() {
-  angle = random(0, 180);
+// Get the angle of the sensors and update the angles
+void updateAngles() {
+  upperArmAngle = analogRead(35);
+  lowerArmAngle = analogRead(34);
 }
 
 // Host server on port 80
@@ -23,10 +21,15 @@ void handleRoot() {
   Serial.println("/ was called");
   server.send(200, "text/html", "<h1>Hello</h1><p>You found the Bin Challenge server!</p>");
 }
-// Angle handler
-void handleAngle() {
-  Serial.println("/angle was called");
-  server.send(200, "text/plain", String(angle));
+// Upper arm angle handler
+void handleUpperArmAngle() {
+  Serial.println("/upperArmAngle was called");
+  server.send(200, "text/plain", String(upperArmAngle));
+}
+// Lower arm angle handler
+void handleLowerArmAngle() {
+  Serial.println("/lowerArmAngle was called");
+  server.send(200, "text/plain", String(lowerArmAngle));
 }
 
 // Server setup
@@ -45,7 +48,8 @@ void setup() {
 
   // Define the handlers
   server.on("/", handleRoot);
-  server.on("/angle", handleAngle);
+  server.on("/upperArmAngle", handleUpperArmAngle);
+  server.on("/lowerArmAngle", handleLowerArmAngle);
 
   // Start the server
   server.begin();
@@ -57,9 +61,9 @@ void loop() {
     unsigned long currentMillis = millis();
 
     //
-    if (currentMillis - previousMillis >= 25) {
+    if (currentMillis - previousMillis >= 100) {
         previousMillis = currentMillis;
-        updateAngle();  // Send angle data
+        updateAngles();  // Send angle data
     }
 
   // Handle client requests
