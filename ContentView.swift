@@ -3,27 +3,18 @@ import Foundation
 import Combine
 
 struct ContentView: View {
-    @State private var startingX = String()
-    @State private var startingY = String()
     @State private var upperArmAngle = Int(0)
     @State private var lowerArmAngle = Int(0)
-    @State private var length = String()
-    @State private var result = [Float(0.0), Float(0.0)]
-    @State private var resultString = String()
-    @State private var alertMessage = ""
-    @State private var showAlert = false
     @State private var timer: AnyCancellable?
-    let scale = 1;
-    
     @State private var warningAngle = Int(10);
     @State private var failureAngle = Int(20);
     
+    // Coordinates of the arm
+    let shoulderCoords = CGPoint(x: 70.0, y: 100.0)
+    @State private var elbowCoords = CGPoint(x: 120.0, y: 100.0)
+    @State private var wristCoords = CGPoint(x: 170.0, y: 100.0)
     
-    let shoulderCoords = CGPoint(x: 25.0, y: 50.0)
-    @State private var elbowCoords = CGPoint(x: 0.0, y: 0.0)
-    @State private var wristCoords = CGPoint(x: 0.0, y: 0.0)
-    
-    // Thank you ChatGPT:
+    // Round int to nearest 5 (thanks chat GPT)
     func roundToNearestFive(_ number: Int) -> Int {
         return 5 * Int(round(Double(number) / 5.0))
     }
@@ -39,26 +30,14 @@ struct ContentView: View {
         }
     }
     
-    // Provide the starting point on the canvas and angle angle
-    // of the arm. Returns where the end point is.
-    // 0 degrees means parallel to the ground.
-    // Direction refers to the direction the arm is facing.
+    // Convert starting coords and angle to new coords
     func getLineCoords(startX: Float, startY: Float, angle: Int, length: Float) -> CGPoint {
         
-        var deltaX = Float(0.0)
-        var deltaY = Float(0.0)
-        
-        // Convert angle and direction to a radian-based value
-        // on the unit circle
-        var inRadians = Float(0.0)
-
+        // Convert angle to radians
         let angleInRadians = Float(angle) * Float.pi / 180.0
-
-        inRadians += angleInRadians
-        
-        deltaX = length * cos(inRadians)
-        deltaY = length * sin(inRadians)
-        
+        // Calculate the change in x and y to next point
+        let deltaX = length * cos(angleInRadians)
+        let deltaY = length * sin(angleInRadians)
         return CGPoint(x: CGFloat(startX + deltaX), y: CGFloat(startY + deltaY))
     }
     
@@ -67,6 +46,13 @@ struct ContentView: View {
         return "(\(point.x), \(point.y))"
     }
     
+    // Microcontroller returns the value of the sensor as an int
+    // between 0 and 4095. Convert it to an angle between -45 and 45
+    // degrees.
+    // Notes:
+    // The sensor's output is not linearly proportional to the real
+    // angle. To minimize the error, this function uses a different
+    // formula for angles less than 0 degrees and above 0 degrees.
     func intToAngle(integer: Int) -> Int {
         if(integer > 1910) {
             return -45
@@ -84,6 +70,8 @@ struct ContentView: View {
         return angle
     }
     
+    // Get the sensor angles by sending an http request to the
+    // microcontroller.
     func fetchAngles() {
         var url = URL(string: "http://192.168.4.1/upperArmAngle")!
         var task = URLSession.shared.dataTask(with: url) {data, response, error in
@@ -96,10 +84,7 @@ struct ContentView: View {
                 DispatchQueue.main.async {
                     let tempAngle = Int(responseString) ?? 0
                     upperArmAngle = roundToNearestFive(intToAngle(integer: tempAngle));
-                    elbowCoords = getLineCoords(startX: Float(shoulderCoords.x), startY: Float(shoulderCoords.y), angle: upperArmAngle, length: 25)
-//                    // Fore arm will continue where upper arm left
-//                    // Make fore arm angle 0 for now
-//                    wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle, length: 25)
+                    elbowCoords = getLineCoords(startX: Float(shoulderCoords.x), startY: Float(shoulderCoords.y), angle: upperArmAngle, length: 50)
                 }
             }
         }
@@ -116,13 +101,15 @@ struct ContentView: View {
                 DispatchQueue.main.async {
                     let tempAngle = Int(responseString) ?? 0
                     lowerArmAngle = roundToNearestFive(intToAngle(integer: tempAngle));
-                    wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle, length: 25)
+                    wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle, length: 50)
                 }
             }
         }
         task.resume()
     }
     
+    // Provide two points and the context of a canvas to draw that line on the
+    // canvas.
     func drawLine (from: CGPoint, to: CGPoint, context: GraphicsContext, color: Color = .gray) {
         // Draw the body
         let linePath = Path { path in
@@ -138,19 +125,10 @@ struct ContentView: View {
     var body: some View {
         VStack {
             
-            Text(String(upperArmAngle))
-            Button("Fetch data", action: fetchAngles)
-                .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-                .padding()
-                .alert(isPresented: $showAlert) {
-                    Alert(title: Text("Error"),
-                          message: Text(self.alertMessage),
-                          dismissButton: .default(Text("OK"))
-                    )
-                }
+            Text("Upper arm angle: " + String(upperArmAngle))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("Lower arm angle: " + String(lowerArmAngle))
+                .frame(maxWidth: .infinity, alignment: .leading)
             
             GeometryReader { geometry in
                 let screenWidth = geometry.size.width;
@@ -175,6 +153,12 @@ struct ContentView: View {
                     drawLine(from: CGPoint(x: 30, y: 100), to: CGPoint(x: 20, y: 140), context: context)
                     // Lower arm
                     drawLine(from: CGPoint(x: 20, y: 140), to: CGPoint(x: 30, y: 180), context: context)
+                    
+                    // Draw the arm with sensors
+                    // Lower arm
+                    drawLine(from: wristCoords, to: elbowCoords, context: context, color: getColor(lowerArmAngle))
+                    // Upper arm
+                    drawLine(from: elbowCoords, to: shoulderCoords, context: context, color: getColor(upperArmAngle))
                 }
                 .frame(width: 200, height: 300)
                 .background(Color.white)
