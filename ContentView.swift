@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var alertMessage = ""
     @State private var showAlert = false
     @State private var timer: AnyCancellable?
+    let scale = 1;
     
     @State private var warningAngle = Int(10);
     @State private var failureAngle = Int(20);
@@ -122,6 +123,18 @@ struct ContentView: View {
         task.resume()
     }
     
+    func drawLine (from: CGPoint, to: CGPoint, context: GraphicsContext, color: Color = .gray) {
+        // Draw the body
+        let linePath = Path { path in
+            path.move(to: from)
+            path.addLine(to: to)
+        }
+        context.stroke(linePath,
+            with:
+                .color(color),
+                       style: StrokeStyle(lineWidth: 10, lineCap: .round))
+    }
+    
     var body: some View {
         VStack {
             
@@ -140,47 +153,32 @@ struct ContentView: View {
                 }
             
             GeometryReader { geometry in
-                
+                let screenWidth = geometry.size.width;
+                let originalWidth: CGFloat = 200;
+                let scale = screenWidth / originalWidth;
                 Canvas { context, size in
-                    let scale = geometry.size.width / 100
-                    context.stroke(Path { _ in
-                        
-                        // Draw the body
-                        var linePath = Path { path in
-                            // Draw shoulders
-                            path.move(to:CGPoint(x: shoulderCoords.x * scale, y: shoulderCoords.y * scale))
-                            path.addLine(to: CGPoint(x: (shoulderCoords.x - 20) * scale, y: (shoulderCoords.y) * scale))
-                            // Draw torso
-                            path.move(to:CGPoint(x: (shoulderCoords.x - 10) * scale, y: (shoulderCoords.y - 5) * scale))
-                            path.addLine(to: CGPoint(x: (shoulderCoords.x - 10) * scale, y: (shoulderCoords.y + 30) * scale))
-                        }
-                        context.stroke(linePath,
-                            with:
-                                .color(.gray),
-                            style: StrokeStyle(lineWidth: 20, lineCap: .round))
-                        
-                        // Draw the fore arm
-                        linePath = Path { path in
-                            path.move(to: CGPoint(x: wristCoords.x * scale, y: wristCoords.y * scale))
-                            path.addLine(to: CGPoint(x: elbowCoords.x * scale, y: elbowCoords.y * scale))
-                        }
-                        context.stroke(linePath,
-                                       with: .color(getColor(lowerArmAngle)),
-                            style: StrokeStyle(lineWidth: 20, lineCap: .round))
-                        
-                        // Draw the upper arm
-                        linePath = Path { path in
-                            path.move(to: CGPoint(x: shoulderCoords.x * scale, y: shoulderCoords.y * scale))
-                            path.addLine(to: CGPoint(x: elbowCoords.x * scale, y: elbowCoords.y * scale))
-                        }
-                        context.stroke(linePath,
-                                       with: .color(getColor(upperArmAngle)),
-                            style: StrokeStyle(lineWidth: 20, lineCap: .round))
-                        
-                    }, with: .color(.black), lineWidth: 5)
+                    // Drwa the head
+                    let circleRect = CGRect(x: 30, y: 50, width: 40, height: 40)
+                    context.fill(Path(ellipseIn: circleRect), with: .color(.gray))
+                    // Draw the torso
+                    drawLine(from: CGPoint(x: 50, y: 90), to: CGPoint(x: 50, y: 200), context: context)
+                    // Draw the shoulders
+                    drawLine(from: CGPoint(x: 30, y: 100), to: CGPoint(x: 70, y: 100), context: context)
+                    // Draw the hips
+                    drawLine(from: CGPoint(x: 30, y: 200), to: CGPoint(x: 70, y: 200), context: context)
+                    // Draw the left leg
+                    drawLine(from: CGPoint(x: 30, y: 200), to: CGPoint(x: 30, y: 280), context: context)
+                    // Draw the right leg
+                    drawLine(from: CGPoint(x: 70, y: 200), to: CGPoint(x: 70, y: 280), context: context)
+                    // Draw the left arm
+                    // Upper section
+                    drawLine(from: CGPoint(x: 30, y: 100), to: CGPoint(x: 20, y: 140), context: context)
+                    // Lower arm
+                    drawLine(from: CGPoint(x: 20, y: 140), to: CGPoint(x: 30, y: 180), context: context)
                 }
-                .frame(width: geometry.size.width, height: geometry.size.width)
+                .frame(width: 200, height: 300)
                 .background(Color.white)
+                .scaleEffect(scale, anchor: .topLeading)
             }
             .edgesIgnoringSafeArea(.all)
 
