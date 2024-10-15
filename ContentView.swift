@@ -2,6 +2,9 @@ import SwiftUI
 import Foundation
 import Combine
 
+let lowerArmUrl = "http://192.168.4.1/lowerArmAngle"
+let upperArmUrl = "http://192.168.4.1/upperArmAngle"
+
 struct ContentView: View {
     @State private var upperArmAngle = Int(0)
     @State private var lowerArmAngle = Int(0)
@@ -72,40 +75,30 @@ struct ContentView: View {
     
     // Get the sensor angles by sending an http request to the
     // microcontroller.
-    func fetchAngles() {
-        var url = URL(string: "http://192.168.4.1/upperArmAngle")!
-        var task = URLSession.shared.dataTask(with: url) {data, response, error in
-            if let error = error {
-                print("Error:", error)
-                return
-            }
-            if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                print("Response:", responseString)
-                DispatchQueue.main.async {
-                    let tempAngle = Int(responseString) ?? 0
-                    upperArmAngle = roundToNearestFive(intToAngle(integer: tempAngle));
-                    elbowCoords = getLineCoords(startX: Float(shoulderCoords.x), startY: Float(shoulderCoords.y), angle: upperArmAngle, length: 50)
-                }
-            }
-        }
-        task.resume()
+    func fetchAngles() async {
+        var url = "http://192.168.4.1/upperArmAngle"
+        upperArmAngle = roundToNearestFive(await fetchAngle(url: url))
+        elbowCoords = getLineCoords(startX: Float(shoulderCoords.x), startY: Float(shoulderCoords.y), angle: upperArmAngle, length: 50)
         
-        url = URL(string: "http://192.168.4.1/lowerArmAngle")!
-        task = URLSession.shared.dataTask(with: url) {data, response, error in
-            if let error = error {
-                print("Error:", error)
-                return
+        url = "http://192.168.4.1/lowerArmAngle"
+        lowerArmAngle = roundToNearestFive(await fetchAngle(url: url))
+        wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle, length: 50)
+    }
+    
+    // Fetch to get angle. Return the angle
+    func fetchAngle(url: String) async -> Int {
+        var angle = 0
+        guard let url = URL(string: url) else { return 0 }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let result = String(data: data, encoding: .utf8) {
+                // Get the angle
+                angle = Int(result) ?? 0
             }
-            if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                print("Response:", responseString)
-                DispatchQueue.main.async {
-                    let tempAngle = Int(responseString) ?? 0
-                    lowerArmAngle = roundToNearestFive(intToAngle(integer: tempAngle));
-                    wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle, length: 50)
-                }
-            }
+        } catch {
+            angle = 0
         }
-        task.resume()
+        return angle
     }
     
     // Provide two points and the context of a canvas to draw that line on the
@@ -124,7 +117,7 @@ struct ContentView: View {
     
     var body: some View {
         VStack {
-            
+                        
             Text("Upper arm angle: " + String(upperArmAngle))
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text("Lower arm angle: " + String(lowerArmAngle))
@@ -171,7 +164,9 @@ struct ContentView: View {
             timer = Timer.publish(every: 0.1, on: .main, in: .common)
                 .autoconnect()
                 .sink { _ in
-                    fetchAngles()
+                    Task {
+                        await fetchAngles()
+                    }
                 }
         }
         .onDisappear() {
