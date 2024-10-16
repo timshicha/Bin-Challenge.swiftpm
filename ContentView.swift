@@ -117,6 +117,46 @@ struct ContentView: View {
     
     var body: some View {
         VStack {
+            
+            Text("Upper arm")
+            Menu {
+                Button ("5\u{00B0}") {
+                    warningAngle = 5
+                }
+                Button ("10\u{00B0}") {
+                    warningAngle = 10
+                }
+                Button ("15\u{00B0}") {
+                    warningAngle = 15
+                }
+            } label: {
+                Label("Warning angle: \(warningAngle)", systemImage: "chevron.down")
+            }
+            Menu {
+                if (warningAngle) <= 5 {
+                    Button ("10\u{00B0}") {
+                        failureAngle = 10
+                    }
+                }
+                if (warningAngle) <= 10 {
+                    Button ("15\u{00B0}") {
+                        failureAngle = 15
+                    }
+                }
+                if (warningAngle <= 15) {
+                    Button ("20\u{00B0}") {
+                        failureAngle = 20
+                    }
+                }
+                if (warningAngle <= 20) {
+                    Button ("25\u{00B0}") {
+                        failureAngle = 25
+                    }
+                }
+            } label: {
+                Label("Failure angle: \(failureAngle)", systemImage: "chevron.down")
+                    .foregroundColor(.red)
+            }
                         
             Text("Upper arm angle: " + String(upperArmAngle))
                 .frame(maxWidth: .infinity, alignment: .leading)
