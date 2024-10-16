@@ -2,6 +2,7 @@ import SwiftUI
 import Foundation
 import Combine
 
+// URLs to getting the angles from the controller
 let lowerArmUrl = "http://192.168.4.1/lowerArmAngle"
 let upperArmUrl = "http://192.168.4.1/upperArmAngle"
 
@@ -22,6 +23,8 @@ struct ContentView: View {
         return 5 * Int(round(Double(number) / 5.0))
     }
     
+    // Determine what color the arm should be based on the
+    // angle its bent
     func getColor(_ angle: Int) -> Color {
         let angleFromZero = abs(angle);
         if angleFromZero >= failureAngle {
@@ -76,12 +79,13 @@ struct ContentView: View {
     // Get the sensor angles by sending an http request to the
     // microcontroller.
     func fetchAngles() async {
-        var url = "http://192.168.4.1/upperArmAngle"
-        upperArmAngle = roundToNearestFive(intToAngle(integer: await fetchAngle(url: url)))
+        // Fetch and convert the upper arm angle
+        upperArmAngle = roundToNearestFive(intToAngle(integer: await fetchAngle(url: lowerArmUrl)))
+        // Find the coordinates of the elbow based on the angle
         elbowCoords = getLineCoords(startX: Float(shoulderCoords.x), startY: Float(shoulderCoords.y), angle: upperArmAngle, length: 50)
-        
-        url = "http://192.168.4.1/lowerArmAngle"
-        lowerArmAngle = roundToNearestFive(intToAngle(integer: await fetchAngle(url: url)))
+        // Fetch and convert the lower arm angle
+        lowerArmAngle = roundToNearestFive(intToAngle(integer: await fetchAngle(url: upperArmUrl)))
+        // Find the coordinates of the wrist based on the angle
         wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle, length: 50)
     }
     
@@ -118,6 +122,7 @@ struct ContentView: View {
     var body: some View {
         VStack {
             
+            // Dropdown selection for warning and failure angles
             Text("Upper arm")
             Menu {
                 Button ("5\u{00B0}") {
@@ -201,6 +206,7 @@ struct ContentView: View {
 
         }
         .onAppear() {
+            // Set a timer to fetch the angles every 0.1 seconds
             timer = Timer.publish(every: 0.1, on: .main, in: .common)
                 .autoconnect()
                 .sink { _ in
