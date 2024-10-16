@@ -77,11 +77,11 @@ struct ContentView: View {
     // microcontroller.
     func fetchAngles() async {
         var url = "http://192.168.4.1/upperArmAngle"
-        upperArmAngle = roundToNearestFive(await fetchAngle(url: url))
+        upperArmAngle = roundToNearestFive(intToAngle(integer: await fetchAngle(url: url)))
         elbowCoords = getLineCoords(startX: Float(shoulderCoords.x), startY: Float(shoulderCoords.y), angle: upperArmAngle, length: 50)
         
         url = "http://192.168.4.1/lowerArmAngle"
-        lowerArmAngle = roundToNearestFive(await fetchAngle(url: url))
+        lowerArmAngle = roundToNearestFive(intToAngle(integer: await fetchAngle(url: url)))
         wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle, length: 50)
     }
     
