@@ -2,16 +2,82 @@ import SwiftUI
 import Foundation
 import Combine
 
+let DEFAULT_WARNING_ANGLE: Int = 10
+let DEFAULT_FAILURE_ANGLE: Int = 15
+
 // URLs to getting the angles from the controller
 let lowerArmUrl = "http://192.168.4.1/lowerArmAngle"
 let upperArmUrl = "http://192.168.4.1/upperArmAngle"
+
+struct ArmPosition {
+    public var upperArmAngle: Int = 0
+    public var lowerArmAngle: Int = 0
+    
+    // Return whether the angles of the arms are within some degrees of 0
+    func anglesAreWithin(maxDifference: Int) -> Bool {
+        return lowerArmAngle > -maxDifference && lowerArmAngle < maxDifference && upperArmAngle > -maxDifference && upperArmAngle < maxDifference
+    }
+}
+
+struct Attempt {
+    private var attemptActive: Bool
+    private var timeStarted: Date?
+    private var timeEnded: Date?
+    private var history: [ArmPosition]
+    private var warningAngle: Int
+    private var failureAngle: Int
+    
+    init(warningAngle: Int = DEFAULT_WARNING_ANGLE,
+         failureAngle: Int = DEFAULT_FAILURE_ANGLE) {
+        self.attemptActive = false
+        self.timeStarted = nil
+        self.timeEnded = nil
+        self.history = [ArmPosition] ()
+        self.warningAngle = warningAngle
+        self.failureAngle = failureAngle
+    }
+    
+    // If the arm is in proper position (green), the attempt starts, return 1.
+    // Return 0 if attempt was not started.
+    mutating func startAttempt(armPosition: ArmPosition) -> Int {
+        // If proper position
+        if (armPosition.anglesAreWithin(maxDifference: self.warningAngle)) {
+            // Record this angle and return success
+            self.history = [armPosition]
+            self.timeStarted = Date()
+            self.timeEnded = nil
+            self.attemptActive = true
+            return 1
+        }
+        return 0
+    }
+    
+    // Provide another arm position. If arm is in red (failure) range, stop the
+    // attempt and return 0. Otherwise, return the number of milliseconds since
+    // the attemp was started (timer).
+    mutating func continueAttempt(armPosition: ArmPosition) -> Int {
+        // If proper angle
+        if (armPosition.anglesAreWithin(maxDifference: self.failureAngle)) {
+            // Record the angle and return the time
+            self.history.append(armPosition)
+            return (Int(Date().timeIntervalSince(self.timeStarted!)) * 1000)
+        }
+        self.timeEnded = Date()
+        self.attemptActive = false
+        return 0
+    }
+    
+    func getHistory() -> [ArmPosition] {
+        return self.history
+    }
+}
 
 struct ContentView: View {
     @State private var upperArmAngle = Int(0)
     @State private var lowerArmAngle = Int(0)
     @State private var timer: AnyCancellable?
-    @State private var warningAngle = Int(10);
-    @State private var failureAngle = Int(20);
+    @State private var warningAngle = Int(DEFAULT_WARNING_ANGLE);
+    @State private var failureAngle = Int(DEFAULT_FAILURE_ANGLE);
     
     // Coordinates of the arm
     let shoulderCoords = CGPoint(x: 70.0, y: 100.0)
@@ -237,7 +303,7 @@ struct ContentView: View {
         }
         .onAppear() {
             // Set a timer to fetch the angles every 0.1 seconds
-            timer = Timer.publish(every: 2, on: .main, in: .common)
+            timer = Timer.publish(every: 0.1, on: .main, in: .common)
                 .autoconnect()
                 .sink { _ in
                     Task {
