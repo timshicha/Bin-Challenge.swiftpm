@@ -15,6 +15,8 @@ struct ArmPosition {
     
     // Return whether the angles of the arms are within some degrees of 0
     func anglesAreWithin(maxDifference: Int) -> Bool {
+        // Only check upper arm (for mechanical testing purposes)
+//        return upperArmAngle > -maxDifference && upperArmAngle < maxDifference
         return lowerArmAngle > -maxDifference && lowerArmAngle < maxDifference && upperArmAngle > -maxDifference && upperArmAngle < maxDifference
     }
 }
@@ -37,9 +39,9 @@ struct Attempt {
         self.failureAngle = failureAngle
     }
     
-    // If the arm is in proper position (green), the attempt starts, return 1.
+    // If the arm is in proper position (green), the attempt starts, return self.
     // Return 0 if attempt was not started.
-    mutating func startAttempt(armPosition: ArmPosition) -> Int {
+    mutating func startAttempt(armPosition: ArmPosition) -> Attempt? {
         // If proper position
         if (armPosition.anglesAreWithin(maxDifference: self.warningAngle)) {
             // Record this angle and return success
@@ -47,9 +49,9 @@ struct Attempt {
             self.timeStarted = Date()
             self.timeEnded = nil
             self.attemptActive = true
-            return 1
+            return self
         }
-        return 0
+        return nil
     }
     
     // Provide another arm position. If arm is in red (failure) range, stop the
@@ -60,7 +62,7 @@ struct Attempt {
         if (armPosition.anglesAreWithin(maxDifference: self.failureAngle)) {
             // Record the angle and return the time
             self.history.append(armPosition)
-            return (Int(Date().timeIntervalSince(self.timeStarted!)) * 1000)
+            return Int(Double(Date().timeIntervalSince(self.timeStarted!)) * 1000)
         }
         self.timeEnded = Date()
         self.attemptActive = false
@@ -83,6 +85,11 @@ struct ContentView: View {
     let shoulderCoords = CGPoint(x: 70.0, y: 100.0)
     @State private var elbowCoords = CGPoint(x: 120.0, y: 100.0)
     @State private var wristCoords = CGPoint(x: 170.0, y: 100.0)
+    
+    @State private var attemptingStart = false
+    @State private var attemptActive = false
+    @State private var attemptTimer = 0
+    @State private var attempt : Attempt? = nil
     
     // Round int to nearest 5 (thanks chat GPT)
     func roundToNearestN(_ number: Int, n: Int = 1) -> Int {
@@ -217,11 +224,52 @@ struct ContentView: View {
                        style: StrokeStyle(lineWidth: 10, lineCap: .round))
     }
     
+    func attemptStart () {
+        var armPosition = ArmPosition ()
+        armPosition.lowerArmAngle = lowerArmAngle
+        armPosition.upperArmAngle = upperArmAngle
+        // Try starting an attempt. If it starts, set some variables
+        if (attempt?.startAttempt(armPosition: armPosition) != nil) {
+            attemptTimer = 0
+            attemptingStart = false
+            attemptActive = true
+        }
+    }
+    
+    func attemptContinue () {
+        var armPosition = ArmPosition ()
+        armPosition.lowerArmAngle = lowerArmAngle
+        armPosition.upperArmAngle = upperArmAngle
+        
+        // If there's no active attempt
+        if (attemptActive == false) {
+            return
+        }
+        // Get the time since attempt started
+        let time = attempt?.continueAttempt(armPosition: armPosition)
+        if(time == nil) {
+            return
+        }
+        // If attempt is done (angle reached failure)
+        if(time == 0) {
+            attemptActive = false
+            return
+        }
+        // Otherwise, there's an attempt still going
+        self.attemptTimer = time ?? 0
+    }
+    
     var body: some View {
         VStack {
             
             // Dropdown selection for warning and failure angles
-            Text("Upper arm")
+            Text("Timer: \(attemptTimer)")
+                .frame(alignment: .leading)
+            Button ("Start new attempt") {
+                attempt = Attempt(warningAngle: warningAngle, failureAngle: failureAngle)
+                attemptActive = false
+                attemptingStart = true
+            }.frame(alignment: .leading)
             Menu {
                 Button ("5\u{00B0}") {
                     setWarningAngle(angle: 5)
@@ -308,6 +356,12 @@ struct ContentView: View {
                 .sink { _ in
                     Task {
                         await fetchAngles()
+                        if(attemptingStart) {
+                            attemptStart()
+                        }
+                        else if(attemptActive) {
+                            attemptContinue()
+                        }
                     }
                 }
         }
