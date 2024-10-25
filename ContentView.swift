@@ -4,6 +4,10 @@ import Combine
 
 let DEFAULT_WARNING_ANGLE: Int = 10
 let DEFAULT_FAILURE_ANGLE: Int = 15
+// How long to wait (in seconds) for http response before timing out
+let FETCH_TIMEOUT: Double = 0.5
+// Longest time (seconds) allowed between successful http calls.
+let MAX_FETCH_INTERVAL: Double = 3.0
 
 // URLs to getting the angles from the controller
 let lowerArmUrl = "http://192.168.4.1/lowerArmAngle"
@@ -77,6 +81,8 @@ struct Attempt {
 struct ContentView: View {
     @State private var upperArmAngle = Int(0)
     @State private var lowerArmAngle = Int(0)
+    // Keep track of the most recent successful arm angle fetches.
+    @State private var timePreviousSuccessfulFetches = Date()
     @State private var timer: AnyCancellable?
     @State private var warningAngle = Int(DEFAULT_WARNING_ANGLE);
     @State private var failureAngle = Int(DEFAULT_FAILURE_ANGLE);
@@ -160,13 +166,27 @@ struct ContentView: View {
         // lower arm angles are updated at the same time.
         var tempUpperArmAngle = 0
         var tempLowerArmAngle = 0
-        // Fetch and convert the upper arm angle
-        tempUpperArmAngle = roundToNearestN(intToAngle(integer: await fetchAngle(url: upperArmUrl)))
-        // Fetch and convert the lower arm angle
-        tempLowerArmAngle = roundToNearestN(intToAngle(integer: await fetchAngle(url: lowerArmUrl)))
+        // Fetch the angles
+        tempUpperArmAngle = await fetchAngle(url: upperArmUrl)
+        tempLowerArmAngle = await fetchAngle(url: lowerArmUrl)
+        // Convert the angles. The angles are given -1, or 0 - 4095.
+        // If -1, it's an error. Otherwise, convert the value to a 0 - 45
+        // degree angle.
+        if(tempUpperArmAngle == -1 || tempLowerArmAngle == -1) {
+            // See if too much time passed since last successful fetch
+            if(Date().timeIntervalSince(timePreviousSuccessfulFetches) > MAX_FETCH_INTERVAL) {
+                print("Too much time passed since last successful fetch.")
+                upperArmAngle = 0
+                lowerArmAngle = 0
+            }
+        }
+        else {
+            timePreviousSuccessfulFetches = Date()
+            // Scale the angles
+            upperArmAngle = roundToNearestN(intToAngle(integer: tempUpperArmAngle))
+            lowerArmAngle = roundToNearestN(intToAngle(integer: tempLowerArmAngle))
+        }
         // Find the coordinates of the elbow based on the angle
-        upperArmAngle = tempUpperArmAngle
-        lowerArmAngle = tempLowerArmAngle
         elbowCoords = getLineCoords(startX: Float(shoulderCoords.x), startY: Float(shoulderCoords.y), angle: upperArmAngle, length: 50)
         // Find the coordinates of the wrist based on the angle
         wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle, length: 50)
@@ -178,8 +198,8 @@ struct ContentView: View {
     func fetchAngle(url: String) async -> Int {
         
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 0.5
-        config.timeoutIntervalForResource = 0.5
+        config.timeoutIntervalForRequest = FETCH_TIMEOUT
+        config.timeoutIntervalForResource = FETCH_TIMEOUT
         let session = URLSession(configuration: config)
         var angle = 0
         guard let url = URL(string: url) else { return 0 }
@@ -189,7 +209,6 @@ struct ContentView: View {
                 // Get the angle
                 let result = String(data: data, encoding: .utf8) ?? "-1"
                 angle = Int(result) ?? -1
-                print("Angle: \(angle)")
             }
         } catch {
             print("Error: \(error.localizedDescription)")
