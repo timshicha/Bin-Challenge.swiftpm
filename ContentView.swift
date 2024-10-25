@@ -20,8 +20,8 @@ struct ArmPosition {
     // Return whether the angles of the arms are within some degrees of 0
     func anglesAreWithin(maxDifference: Int) -> Bool {
         // Only check upper arm (for mechanical testing purposes)
-//        return upperArmAngle > -maxDifference && upperArmAngle < maxDifference
-        return lowerArmAngle > -maxDifference && lowerArmAngle < maxDifference && upperArmAngle > -maxDifference && upperArmAngle < maxDifference
+        return upperArmAngle > -maxDifference && upperArmAngle < maxDifference
+//        return lowerArmAngle > -maxDifference && lowerArmAngle < maxDifference && upperArmAngle > -maxDifference && upperArmAngle < maxDifference
     }
 }
 
@@ -60,7 +60,7 @@ struct Attempt {
     
     // Provide another arm position. If arm is in red (failure) range, stop the
     // attempt and return 0. Otherwise, return the number of milliseconds since
-    // the attemp was started (timer).
+    // the attempt was started (timer).
     mutating func continueAttempt(armPosition: ArmPosition) -> Int {
         // If proper angle
         if (armPosition.anglesAreWithin(maxDifference: self.failureAngle)) {
@@ -71,6 +71,16 @@ struct Attempt {
         self.timeEnded = Date()
         self.attemptActive = false
         return 0
+    }
+    
+    // Manually end the attempt (such as when the connection is lost)
+    mutating func endAttempt() -> Int {
+        let timeEnded = Date()
+        let timeStarted = self.timeStarted ?? Date()
+        self.timeEnded = timeEnded
+        self.attemptActive = false
+        print("end attempt")
+        return Int(Double(timeEnded.timeIntervalSince(timeStarted)) * 1000)
     }
     
     func getHistory() -> [ArmPosition] {
@@ -176,10 +186,11 @@ struct ContentView: View {
         // degree angle.
         if(tempUpperArmAngle == -1 || tempLowerArmAngle == -1) {
             showBadConnectionWarning = true
-            print("bad connection")
+//            print("bad connection")
             // See if too much time passed since last successful fetch
             if(Date().timeIntervalSince(timePreviousSuccessfulFetches) > MAX_FETCH_INTERVAL) {
-                print("Too much time passed since last successful fetch.")
+//                print("Too much time passed since last successful fetch.")
+                self.attemptEnd()
                 upperArmAngle = 0
                 lowerArmAngle = 0
             }
@@ -216,7 +227,7 @@ struct ContentView: View {
                 angle = Int(result) ?? -1
             }
         } catch {
-            print("Error: \(error.localizedDescription)")
+//            print("Error: \(error.localizedDescription)")
             return -1
         }
         return angle
@@ -286,11 +297,19 @@ struct ContentView: View {
         }
         // If attempt is done (angle reached failure)
         if(time == 0) {
-            attemptActive = false
+            attemptEnd()
             return
         }
         // Otherwise, there's an attempt still going
         self.attemptTimer = time ?? 0
+    }
+    
+    func attemptEnd () {
+        if(!attemptActive) {
+            return
+        }
+        self.attemptTimer = self.attempt?.endAttempt() ?? 0
+        attemptActive = false
     }
     
     var body: some View {
