@@ -172,18 +172,28 @@ struct ContentView: View {
         wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle, length: 50)
     }
     
-    // Fetch to get angle. Return the angle
+    // Fetch to get angle. Return the angle.
+    // If there's a connection issue or parsing error, return -1.
+    // Any value that's not -1 can be considered a valid output.
     func fetchAngle(url: String) async -> Int {
+        
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 0.5
+        config.timeoutIntervalForResource = 0.5
+        let session = URLSession(configuration: config)
         var angle = 0
         guard let url = URL(string: url) else { return 0 }
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            if let result = String(data: data, encoding: .utf8) {
+            let (data, response) = try await session.data(from: url)
+            if let httpResponse = response as? HTTPURLResponse {
                 // Get the angle
-                angle = Int(result) ?? 0
+                let result = String(data: data, encoding: .utf8) ?? "-1"
+                angle = Int(result) ?? -1
+                print("Angle: \(angle)")
             }
         } catch {
-            return 0
+            print("Error: \(error.localizedDescription)")
+            return -1
         }
         return angle
     }
@@ -228,9 +238,9 @@ struct ContentView: View {
         var armPosition = ArmPosition ()
         armPosition.lowerArmAngle = lowerArmAngle
         armPosition.upperArmAngle = upperArmAngle
+        attemptTimer = 0
         // Try starting an attempt. If it starts, set some variables
         if (attempt?.startAttempt(armPosition: armPosition) != nil) {
-            attemptTimer = 0
             attemptingStart = false
             attemptActive = true
         }
