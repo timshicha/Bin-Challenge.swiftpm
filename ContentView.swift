@@ -83,6 +83,8 @@ struct ContentView: View {
     @State private var lowerArmAngle = Int(0)
     // Keep track of the most recent successful arm angle fetches.
     @State private var timePreviousSuccessfulFetches = Date()
+    @State private var showBadConnectionWarning = false
+    @State private var badConnectionToggle = true
     @State private var timer: AnyCancellable?
     @State private var warningAngle = Int(DEFAULT_WARNING_ANGLE);
     @State private var failureAngle = Int(DEFAULT_FAILURE_ANGLE);
@@ -173,6 +175,8 @@ struct ContentView: View {
         // If -1, it's an error. Otherwise, convert the value to a 0 - 45
         // degree angle.
         if(tempUpperArmAngle == -1 || tempLowerArmAngle == -1) {
+            showBadConnectionWarning = true
+            print("bad connection")
             // See if too much time passed since last successful fetch
             if(Date().timeIntervalSince(timePreviousSuccessfulFetches) > MAX_FETCH_INTERVAL) {
                 print("Too much time passed since last successful fetch.")
@@ -181,6 +185,7 @@ struct ContentView: View {
             }
         }
         else {
+            showBadConnectionWarning = false
             timePreviousSuccessfulFetches = Date()
             // Scale the angles
             upperArmAngle = roundToNearestN(intToAngle(integer: tempUpperArmAngle))
@@ -290,7 +295,7 @@ struct ContentView: View {
     
     var body: some View {
         VStack {
-            
+
             // Dropdown selection for warning and failure angles
             Text("Timer: \(attemptTimer)")
                 .frame(alignment: .leading)
@@ -370,13 +375,29 @@ struct ContentView: View {
                     drawLine(from: wristCoords, to: elbowCoords, context: context, color: getColor(lowerArmAngle))
                     // Upper arm
                     drawLine(from: elbowCoords, to: shoulderCoords, context: context, color: getColor(upperArmAngle))
+
+                    
                 }
-                .frame(width: 200, height: 300)
                 .background(Color.white)
                 .scaleEffect(scale, anchor: .topLeading)
+                .frame(width: geometry.size.width, height: 400)
+                
+                // Bad connection image
+                if(showBadConnectionWarning) {
+                    Image(systemName: "wifi.exclamationmark")
+                        .resizable()
+                        .position(x: geometry.size.width / 2, y: 190)
+                        .frame(width: 100, height: 100)
+                        .foregroundColor(.black)
+                        .opacity(badConnectionToggle ? 1 : 0.2)
+                        .animation(.easeInOut(duration: 0.3).repeatForever(autoreverses: true), value: badConnectionToggle)
+                        .onAppear {
+                            badConnectionToggle.toggle()
+                        }
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .edgesIgnoringSafeArea(.all)
-
         }
         .onAppear() {
             // Set a timer to fetch the angles every 0.1 seconds
