@@ -13,6 +13,11 @@ let MAX_FETCH_INTERVAL: Double = 3.0
 let lowerArmUrl = "http://192.168.4.1/lowerArmAngle"
 let upperArmUrl = "http://192.168.4.1/upperArmAngle"
 
+let RED = Color(red: 145/255, green: 0/255, blue: 0/255)
+let ORANGE = Color(red: 210/255, green: 95/255, blue: 25/255)
+let GREEN = Color(red: 0/255, green: 120/255, blue: 0/255)
+    
+
 struct ArmPosition {
     public var upperArmAngle: Int = 0
     public var lowerArmAngle: Int = 0
@@ -142,12 +147,13 @@ struct ContentView: View {
     @State private var failureAngle = Int(DEFAULT_FAILURE_ANGLE);
     
     // Coordinates of the arm
-    let shoulderCoords = CGPoint(x: 70.0, y: 100.0)
-    @State private var elbowCoords = CGPoint(x: 120.0, y: 100.0)
-    @State private var wristCoords = CGPoint(x: 170.0, y: 100.0)
+    let shoulderCoords = CGPoint(x: 87.0, y: 89.0)
+    @State private var elbowCoords = CGPoint(x: 137.0, y: 89.0)
+    @State private var wristCoords = CGPoint(x: 187.0, y: 89.0)
     
     @State private var attemptingStart = false
     @State private var attemptActive = false
+    @State private var showTimer = true
     @State private var attemptTimer = 0
     @State private var attempt : Attempt? = nil
     
@@ -164,11 +170,11 @@ struct ContentView: View {
     func getColor(_ angle: Int) -> Color {
         let angleFromZero = abs(angle);
         if angleFromZero >= failureAngle {
-            return .red
+            return RED
         } else if angleFromZero >= warningAngle {
-            return Color(red: 210/255, green: 95/255, blue: 25/255)
+            return ORANGE
         } else {
-            return Color(red: 0/255, green: 120/255, blue: 0/255)
+            return GREEN
         }
     }
     
@@ -366,70 +372,87 @@ struct ContentView: View {
         VStack {
 
             // Dropdown selection for warning and failure angles
-            Text(msToFormattedString(ms: attemptTimer))
-                .frame(width: 140, alignment: .leading)
+            Text(
+                showTimer ?
+                msToFormattedString(ms: attemptTimer) :
+                    attemptActive ? "Timer running...":
+                    "Timer stopped"
+            )
+                .frame(width: 160, alignment: .leading)
                 .font(.title2)
                 .bold()
             
+            HStack {
+                Button (action: {
+                    attempt = Attempt(warningAngle: warningAngle, failureAngle: failureAngle)
+                    attemptActive = false
+                    attemptingStart = true
+                    attemptTimer = 0
+                }) {
+                    Text("Start")
+                        .padding(5)
+                }
+                .foregroundColor(Color.white)
+                .background(Color.green)
+                .cornerRadius(5)
+                
+                Button (action: {
+                    zeroSensors()
+                }) {
+                    Text("Zero sensors")
+                        .padding(5)
+                }
+                .foregroundColor(Color.white)
+                .background(Color.green)
+                .cornerRadius(5)
+                
+                Button (action: {
+                    attemptTimer = 0
+                    upperArmOffset = 0
+                    lowerArmOffset = 0
+                }) {
+                    Text("Reset")
+                        .padding(5)
+                }
+                .foregroundColor(Color.white)
+                .background(Color.green)
+                .cornerRadius(5)
+                
+                Text("Timer:")
+                Toggle("", isOn: $showTimer)
+                .toggleStyle(SwitchToggleStyle())
+                .labelsHidden()
+            }
             // Two side by size containers
             HStack {
-                VStack (alignment: .leading) {
-                    Button (action: {
-                        attempt = Attempt(warningAngle: warningAngle, failureAngle: failureAngle)
-                        attemptActive = false
-                        attemptingStart = true
-                        attemptTimer = 0
-                    }) {
-                        Text("Start")
-                            .padding(3)
-                    }
-                    .foregroundColor(Color.white)
-                    .background(Color.blue)
-                    .cornerRadius(5)
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 30, height: 30)
-                            .foregroundColor(.yellow)
-                        TextField("Warning angle", text: $warningAngleInput)
-                            .keyboardType(.numberPad)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .padding(0)
-                            .onChange(of: warningAngleInput) { newValue in
-                                setWarningAngle(angle: Int(warningAngleInput) ?? DEFAULT_WARNING_ANGLE)
-                            }
-                    }
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 30, height: 30)
+                        .foregroundColor(ORANGE)
+                    TextField("Warning angle", text: $warningAngleInput)
+                        .keyboardType(.numberPad)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(0)
+                        .onChange(of: warningAngleInput) { newValue in
+                            setWarningAngle(angle: Int(warningAngleInput) ?? DEFAULT_WARNING_ANGLE)
+                        }
                 }
-                .padding(5)
-                .multilineTextAlignment(.leading)
-                VStack (alignment: .leading) {
-                    Button (action: {
-                        zeroSensors()
-                    }) {
-                        Text("Zero sensors")
-                            .padding(3)
-                    }
-                    .foregroundColor(Color.white)
-                    .background(Color.blue)
-                    .cornerRadius(5)
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 30, height: 30)
-                            .foregroundStyle(.red)
-                        TextField("Fail angle", text: $failureAngleInput)
-                            .keyboardType(.numberPad)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .padding(0)
-                            .onChange(of: failureAngleInput) { newValue in
-                                setFailureAngle(angle: Int(failureAngleInput) ?? DEFAULT_FAILURE_ANGLE)
-                            }
-                    }
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 30, height: 30)
+                        .foregroundStyle(RED)
+                    TextField("Fail angle", text: $failureAngleInput)
+                        .keyboardType(.numberPad)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(0)
+                        .onChange(of: failureAngleInput) { newValue in
+                            setFailureAngle(angle: Int(failureAngleInput) ?? DEFAULT_FAILURE_ANGLE)
+                        }
                 }
-                .padding(5)
-                .multilineTextAlignment(.leading)
             }
             
             
@@ -439,39 +462,60 @@ struct ContentView: View {
                 let scale = screenWidth / originalWidth;
                 Canvas { context, size in
                     // Draw the head
-                    let circleRect = CGRect(x: 30, y: 50, width: 40, height: 40)
-                    context.fill(Path(ellipseIn: circleRect), with: .color(.gray))
-                    // Draw the torso
-                    drawLine(from: CGPoint(x: 50, y: 90), to: CGPoint(x: 50, y: 200), context: context)
-                    // Draw the shoulders
-                    drawLine(from: CGPoint(x: 30, y: 100), to: CGPoint(x: 70, y: 100), context: context)
-                    // Draw the hips
-                    drawLine(from: CGPoint(x: 30, y: 200), to: CGPoint(x: 70, y: 200), context: context)
-                    // Draw the left leg
-                    drawLine(from: CGPoint(x: 30, y: 200), to: CGPoint(x: 30, y: 280), context: context)
-                    // Draw the right leg
-                    drawLine(from: CGPoint(x: 70, y: 200), to: CGPoint(x: 70, y: 280), context: context)
-                    // Draw the left arm
-                    // Upper section
-                    drawLine(from: CGPoint(x: 30, y: 100), to: CGPoint(x: 20, y: 140), context: context)
-                    // Lower arm
-                    drawLine(from: CGPoint(x: 20, y: 140), to: CGPoint(x: 30, y: 180), context: context)
+                    let head = CGRect(x: 35, y: 42, width: 30, height: 30)
+                    context.fill(Path(ellipseIn: head), with: .color(.gray))
                     
-                    // Draw the arm with sensors
-                    // Lower arm
-                    drawLine(from: wristCoords, to: elbowCoords, context: context, color: getColor(lowerArmAngle + lowerArmOffset))
-                    // Upper arm
-                    drawLine(from: elbowCoords, to: shoulderCoords, context: context, color: getColor(upperArmAngle + upperArmOffset))
+                    // Draw the shoulders (horizontal capsule)
+                    let shouldersCapsule = CGRect(x: 4, y: 80, width: 92, height: 18)
+                    let shouldersPath = Path(roundedRect: shouldersCapsule, cornerRadius: 10)
+                    context.fill(shouldersPath, with: .color(.gray))
+                    
+                    // Draw the torso
+                    let torsoPath = Path(CGRect(x: 25, y: 80, width: 50, height: 100))
+                    context.fill(torsoPath, with: .color(.gray))
+                    
+                    // Draw the left arm
+                    let leftArmCapsule = CGRect(x: 4, y: 80, width: 18, height: 100)
+                    let leftArmPath = Path(roundedRect: leftArmCapsule, cornerRadius: 10)
+                    context.fill(leftArmPath, with: .color(.gray))
+                    
+                    // Draw the left leg
+                    let leftLegCapsule = CGRect(x: 25, y: 170, width: 20, height: 100)
+                    let leftLegPath = Path(roundedRect: leftLegCapsule, cornerRadius: 10)
+                    context.fill(leftLegPath, with: .color(.gray))
+                    
+                    // Draw the right leg
+                    let rightLegCapsule = CGRect(x: 55, y: 170, width: 20, height: 100)
+                    let rightLegPath = Path(roundedRect: rightLegCapsule, cornerRadius: 10)
+                    context.fill(rightLegPath, with: .color(.gray))
+                    
+                                                            
+                    // Draw the lower arm
+                    let lowerArmStart = CGPoint(x: elbowCoords.x, y: elbowCoords.y)
+                    let lowerArmEnd = CGPoint(x: wristCoords.x, y: wristCoords.y)
+                    var lowerArmPath = Path()
+                    lowerArmPath.move(to: lowerArmStart)
+                    lowerArmPath.addLine(to: lowerArmEnd)
+                    context.stroke(lowerArmPath, with: .color(getColor(lowerArmAngle + lowerArmOffset)), style: StrokeStyle(lineWidth: 18.0, lineCap: .round))
+                    
+                    // Draw the upper arm
+                    let upperArmStart = CGPoint(x: shoulderCoords.x, y: shoulderCoords.y)
+                    let upperArmEnd = CGPoint(x: elbowCoords.x, y: elbowCoords.y)
+                    var upperArmPath = Path()
+                    upperArmPath.move(to: upperArmStart)
+                    upperArmPath.addLine(to: upperArmEnd)
+                    context.stroke(upperArmPath, with: .color(getColor(upperArmAngle + upperArmOffset)), style: StrokeStyle(lineWidth: 18.0, lineCap: .round))
+                    
 
                     // Write the angles
-                    let upperArmText = Text(verbatim: "\(upperArmAngle + upperArmOffset)°")
-                        .font(.title2)
+                    let upperArmText = Text(verbatim: "\(-(upperArmAngle + upperArmOffset))°")
+                        .font(.title3)
                         .foregroundColor(.white)
-                    let upperArmTextPosition = CGPoint(x: 100, y: 100)
-                    let lowerArmText = Text(verbatim: "\(lowerArmAngle + lowerArmOffset)°")
-                        .font(.title2)
+                    let upperArmTextPosition = CGPoint(x: 115, y: 89)
+                    let lowerArmText = Text(verbatim: "\(-(lowerArmAngle + lowerArmOffset))°")
+                        .font(.title3)
                         .foregroundColor(.white)
-                    let lowerArmTextPosition = CGPoint(x: 150, y: 100)
+                    let lowerArmTextPosition = CGPoint(x: 160, y: 89)
                     context.draw(upperArmText, at: upperArmTextPosition)
                     context.draw(lowerArmText, at: lowerArmTextPosition)
                 }
