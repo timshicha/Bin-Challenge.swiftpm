@@ -24,9 +24,7 @@ struct ArmPosition {
     
     // Return whether the angles of the arms are within some degrees of 0
     func anglesAreWithin(maxDifference: Int) -> Bool {
-        // Only check upper arm (for mechanical testing purposes)
-        return upperArmAngle > -maxDifference && upperArmAngle < maxDifference
-//        return lowerArmAngle > -maxDifference && lowerArmAngle < maxDifference && upperArmAngle > -maxDifference && upperArmAngle < maxDifference
+        return lowerArmAngle > -maxDifference && lowerArmAngle < maxDifference && upperArmAngle > -maxDifference && upperArmAngle < maxDifference
     }
 }
 
@@ -373,12 +371,13 @@ struct ContentView: View {
 
             // Dropdown selection for warning and failure angles
             Text(
-                showTimer ?
-                msToFormattedString(ms: attemptTimer) :
-                    attemptActive ? "Timer running...":
-                    "Timer stopped"
+                showTimer ? msToFormattedString(ms: attemptTimer) :
+                    attemptingStart ? "Waiting to start" :
+                    attemptActive ? "Timer running" : "Timer stopped"
             )
                 .frame(width: 160, alignment: .leading)
+                .foregroundColor(attemptingStart ? .white :
+                                    attemptActive ? .green : .red)
                 .font(.title2)
                 .bold()
             
