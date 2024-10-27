@@ -25,6 +25,12 @@ struct ArmPosition {
     }
 }
 
+extension View {
+    func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+}
+
 struct Attempt {
     private var attemptActive: Bool
     private var timeStarted: Date?
@@ -91,11 +97,16 @@ struct Attempt {
 struct ContentView: View {
     @State private var upperArmAngle = Int(0)
     @State private var lowerArmAngle = Int(0)
+    // Record the offset of angle from 0 (allows user to "zero" device)
+    @State private var upperArmOffset = Int(0)
+    @State private var lowerArmOffset = Int(0)
     // Keep track of the most recent successful arm angle fetches.
     @State private var timePreviousSuccessfulFetches = Date()
     @State private var showBadConnectionWarning = false
     @State private var badConnectionToggle = true
     @State private var timer: AnyCancellable?
+    @State private var warningAngleInput = String(DEFAULT_WARNING_ANGLE)
+    @State private var failureAngleInput = String(DEFAULT_FAILURE_ANGLE)
     @State private var warningAngle = Int(DEFAULT_WARNING_ANGLE);
     @State private var failureAngle = Int(DEFAULT_FAILURE_ANGLE);
     
@@ -191,8 +202,6 @@ struct ContentView: View {
             if(Date().timeIntervalSince(timePreviousSuccessfulFetches) > MAX_FETCH_INTERVAL) {
 //                print("Too much time passed since last successful fetch.")
                 self.attemptEnd()
-                upperArmAngle = 0
-                lowerArmAngle = 0
             }
         }
         else {
@@ -203,9 +212,15 @@ struct ContentView: View {
             lowerArmAngle = roundToNearestN(intToAngle(integer: tempLowerArmAngle))
         }
         // Find the coordinates of the elbow based on the angle
-        elbowCoords = getLineCoords(startX: Float(shoulderCoords.x), startY: Float(shoulderCoords.y), angle: upperArmAngle, length: 50)
+        elbowCoords = getLineCoords(startX: Float(shoulderCoords.x), startY: Float(shoulderCoords.y), angle: upperArmAngle + upperArmOffset, length: 50)
         // Find the coordinates of the wrist based on the angle
-        wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle, length: 50)
+        wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle + lowerArmOffset, length: 50)
+    }
+    
+    // Whatever the current angle of the sensor is, make this 0 degrees
+    func zeroSensors() {
+        upperArmOffset = -upperArmAngle
+        lowerArmOffset = -lowerArmAngle
     }
     
     // Fetch to get angle. Return the angle.
@@ -244,7 +259,7 @@ struct ContentView: View {
     
     // Set the failure angle.
     // If the warning angle is higher, make it the same
-    func setFaillureAngle(angle: Int) {
+    func setFailureAngle(angle: Int) {
         if(angle <= warningAngle) {
             warningAngle = angle
             // If warning angle is now less than 0, make it zero
@@ -271,8 +286,8 @@ struct ContentView: View {
     
     func attemptStart () {
         var armPosition = ArmPosition ()
-        armPosition.lowerArmAngle = lowerArmAngle
-        armPosition.upperArmAngle = upperArmAngle
+        armPosition.lowerArmAngle = lowerArmAngle + lowerArmOffset
+        armPosition.upperArmAngle = upperArmAngle + upperArmOffset
         attemptTimer = 0
         // Try starting an attempt. If it starts, set some variables
         if (attempt?.startAttempt(armPosition: armPosition) != nil) {
@@ -283,8 +298,8 @@ struct ContentView: View {
     
     func attemptContinue () {
         var armPosition = ArmPosition ()
-        armPosition.lowerArmAngle = lowerArmAngle
-        armPosition.upperArmAngle = upperArmAngle
+        armPosition.lowerArmAngle = lowerArmAngle + lowerArmOffset
+        armPosition.upperArmAngle = upperArmAngle + upperArmOffset
         
         // If there's no active attempt
         if (attemptActive == false) {
@@ -323,47 +338,25 @@ struct ContentView: View {
                 attemptActive = false
                 attemptingStart = true
             }.frame(alignment: .leading)
-            Menu {
-                Button ("5\u{00B0}") {
-                    setWarningAngle(angle: 5)
-                }
-                Button ("10\u{00B0}") {
-                    setWarningAngle(angle: 10)
-                }
-                Button ("15\u{00B0}") {
-                    setWarningAngle(angle: 15)
-                }
-                Button ("20\u{00B0}") {
-                    setWarningAngle(angle: 20)
-                }
-            } label: {
-                Label("Warning angle: \(warningAngle)", systemImage: "chevron.down")
+            Button ("Zero sensors") {
+                zeroSensors()
             }
-            Menu {
-                Button ("10\u{00B0}") {
-                    setFaillureAngle(angle: 10)
+            
+            TextField("Warning angle", text: $warningAngleInput)
+                .keyboardType(.numberPad)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding()
+                .onChange(of: warningAngleInput) { newValue in
+                    setWarningAngle(angle: Int(warningAngleInput) ?? DEFAULT_WARNING_ANGLE)
                 }
-                Button ("15\u{00B0}") {
-                    setFaillureAngle(angle: 15)
+            
+            TextField("Failure angle", text: $failureAngleInput)
+                .keyboardType(.numberPad)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding()
+                .onChange(of: failureAngleInput) { newValue in
+                    setFailureAngle(angle: Int(failureAngleInput) ?? DEFAULT_FAILURE_ANGLE)
                 }
-                Button ("20\u{00B0}") {
-                    setFaillureAngle(angle: 20)
-                }
-                Button ("25\u{00B0}") {
-                    setFaillureAngle(angle: 25)
-                }
-                Button ("30\u{00B0}") {
-                    setFaillureAngle(angle: 30)
-                }
-            } label: {
-                Label("Failure angle: \(failureAngle)", systemImage: "chevron.down")
-                    .foregroundColor(.red)
-            }
-                        
-            Text("Upper arm angle: " + String(upperArmAngle))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text("Lower arm angle: " + String(lowerArmAngle))
-                .frame(maxWidth: .infinity, alignment: .leading)
             
             GeometryReader { geometry in
                 let screenWidth = geometry.size.width;
@@ -391,11 +384,21 @@ struct ContentView: View {
                     
                     // Draw the arm with sensors
                     // Lower arm
-                    drawLine(from: wristCoords, to: elbowCoords, context: context, color: getColor(lowerArmAngle))
+                    drawLine(from: wristCoords, to: elbowCoords, context: context, color: getColor(lowerArmAngle + lowerArmOffset))
                     // Upper arm
-                    drawLine(from: elbowCoords, to: shoulderCoords, context: context, color: getColor(upperArmAngle))
+                    drawLine(from: elbowCoords, to: shoulderCoords, context: context, color: getColor(upperArmAngle + upperArmOffset))
 
-                    
+                    // Write the angles
+                    let upperArmText = Text(verbatim: "\(upperArmAngle + upperArmOffset)°")
+                        .font(.title2)
+                        .foregroundColor(.black)
+                    let upperArmTextPosition = CGPoint(x: 100, y: 100)
+                    let lowerArmText = Text(verbatim: "\(lowerArmAngle + lowerArmOffset)°")
+                        .font(.title2)
+                        .foregroundColor(.black)
+                    let lowerArmTextPosition = CGPoint(x: 150, y: 100)
+                    context.draw(upperArmText, at: upperArmTextPosition)
+                    context.draw(lowerArmText, at: lowerArmTextPosition)
                 }
                 .background(Color.white)
                 .scaleEffect(scale, anchor: .topLeading)
@@ -405,7 +408,7 @@ struct ContentView: View {
                 if(showBadConnectionWarning) {
                     Image(systemName: "wifi.exclamationmark")
                         .resizable()
-                        .position(x: geometry.size.width / 2, y: 190)
+                        .position(x: geometry.size.width / 2, y: 60)
                         .frame(width: 100, height: 100)
                         .foregroundColor(.black)
                         .opacity(badConnectionToggle ? 1 : 0.2)
@@ -437,6 +440,9 @@ struct ContentView: View {
         .onDisappear() {
             timer?.cancel()
             timer = nil
+        }
+        .onTapGesture {
+            hideKeyboard()
         }
     }
 }
