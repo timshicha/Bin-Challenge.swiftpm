@@ -94,6 +94,37 @@ struct Attempt {
     }
 }
 
+// Return milliseconds as string.
+// Ex: 63589 -> "1:03.589
+func msToFormattedString(ms: Int) -> String {
+    var ms = ms
+    let minutesInt = Int(floor(Double(ms) / 60000.0))
+    ms -= minutesInt * 60000
+    let secondsInt = Int(floor(Double(ms) / 1000.0))
+    ms -= secondsInt * 1000
+    let millisecondsInt = Int(ms)
+
+    let minutes = String(minutesInt)
+    var seconds = String(secondsInt)
+    var milliseconds = String(millisecondsInt)
+    // Pad with 0's where needed...
+    // Example: 3:5.123 -> 3:05.123
+    if(secondsInt < 10) {
+        seconds = "0\(secondsInt)"
+    }
+    if(millisecondsInt < 100) {
+        // Example: 3:05.2 -> 3:05.002
+        if(millisecondsInt < 10) {
+            milliseconds = "00\(millisecondsInt)"
+        }
+        // Example: 3:05.12 -> 3:05.012
+        else {
+            milliseconds = "0\(millisecondsInt)"
+        }
+    }
+    return "\(minutes):\(seconds).\(milliseconds)"
+}
+
 struct ContentView: View {
     @State private var upperArmAngle = Int(0)
     @State private var lowerArmAngle = Int(0)
@@ -135,9 +166,9 @@ struct ContentView: View {
         if angleFromZero >= failureAngle {
             return .red
         } else if angleFromZero >= warningAngle {
-            return .orange
+            return Color(red: 210/255, green: 95/255, blue: 25/255)
         } else {
-            return .green
+            return Color(red: 0/255, green: 120/255, blue: 0/255)
         }
     }
     
@@ -285,6 +316,10 @@ struct ContentView: View {
     }
     
     func attemptStart () {
+        // If bad connection, don't start
+        if(showBadConnectionWarning) {
+            return
+        }
         var armPosition = ArmPosition ()
         armPosition.lowerArmAngle = lowerArmAngle + lowerArmOffset
         armPosition.upperArmAngle = upperArmAngle + upperArmOffset
@@ -331,32 +366,72 @@ struct ContentView: View {
         VStack {
 
             // Dropdown selection for warning and failure angles
-            Text("Timer: \(attemptTimer)")
-                .frame(alignment: .leading)
-            Button ("Start new attempt") {
-                attempt = Attempt(warningAngle: warningAngle, failureAngle: failureAngle)
-                attemptActive = false
-                attemptingStart = true
-            }.frame(alignment: .leading)
-            Button ("Zero sensors") {
-                zeroSensors()
+            Text(msToFormattedString(ms: attemptTimer))
+                .frame(width: 140, alignment: .leading)
+                .font(.title2)
+                .bold()
+            
+            // Two side by size containers
+            HStack {
+                VStack (alignment: .leading) {
+                    Button (action: {
+                        attempt = Attempt(warningAngle: warningAngle, failureAngle: failureAngle)
+                        attemptActive = false
+                        attemptingStart = true
+                        attemptTimer = 0
+                    }) {
+                        Text("Start")
+                            .padding(3)
+                    }
+                    .foregroundColor(Color.white)
+                    .background(Color.blue)
+                    .cornerRadius(5)
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 30, height: 30)
+                            .foregroundColor(.yellow)
+                        TextField("Warning angle", text: $warningAngleInput)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .padding(0)
+                            .onChange(of: warningAngleInput) { newValue in
+                                setWarningAngle(angle: Int(warningAngleInput) ?? DEFAULT_WARNING_ANGLE)
+                            }
+                    }
+                }
+                .padding(5)
+                .multilineTextAlignment(.leading)
+                VStack (alignment: .leading) {
+                    Button (action: {
+                        zeroSensors()
+                    }) {
+                        Text("Zero sensors")
+                            .padding(3)
+                    }
+                    .foregroundColor(Color.white)
+                    .background(Color.blue)
+                    .cornerRadius(5)
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 30, height: 30)
+                            .foregroundStyle(.red)
+                        TextField("Fail angle", text: $failureAngleInput)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .padding(0)
+                            .onChange(of: failureAngleInput) { newValue in
+                                setFailureAngle(angle: Int(failureAngleInput) ?? DEFAULT_FAILURE_ANGLE)
+                            }
+                    }
+                }
+                .padding(5)
+                .multilineTextAlignment(.leading)
             }
             
-            TextField("Warning angle", text: $warningAngleInput)
-                .keyboardType(.numberPad)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding()
-                .onChange(of: warningAngleInput) { newValue in
-                    setWarningAngle(angle: Int(warningAngleInput) ?? DEFAULT_WARNING_ANGLE)
-                }
-            
-            TextField("Failure angle", text: $failureAngleInput)
-                .keyboardType(.numberPad)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding()
-                .onChange(of: failureAngleInput) { newValue in
-                    setFailureAngle(angle: Int(failureAngleInput) ?? DEFAULT_FAILURE_ANGLE)
-                }
             
             GeometryReader { geometry in
                 let screenWidth = geometry.size.width;
@@ -391,16 +466,16 @@ struct ContentView: View {
                     // Write the angles
                     let upperArmText = Text(verbatim: "\(upperArmAngle + upperArmOffset)°")
                         .font(.title2)
-                        .foregroundColor(.black)
+                        .foregroundColor(.white)
                     let upperArmTextPosition = CGPoint(x: 100, y: 100)
                     let lowerArmText = Text(verbatim: "\(lowerArmAngle + lowerArmOffset)°")
                         .font(.title2)
-                        .foregroundColor(.black)
+                        .foregroundColor(.white)
                     let lowerArmTextPosition = CGPoint(x: 150, y: 100)
                     context.draw(upperArmText, at: upperArmTextPosition)
                     context.draw(lowerArmText, at: lowerArmTextPosition)
                 }
-                .background(Color.white)
+                .background(Color.black)
                 .scaleEffect(scale, anchor: .topLeading)
                 .frame(width: geometry.size.width, height: 400)
                 
@@ -408,9 +483,9 @@ struct ContentView: View {
                 if(showBadConnectionWarning) {
                     Image(systemName: "wifi.exclamationmark")
                         .resizable()
-                        .position(x: geometry.size.width / 2, y: 60)
-                        .frame(width: 100, height: 100)
-                        .foregroundColor(.black)
+                        .position(x: 30, y: 25)
+                        .frame(width: 40, height: 40)
+                        .foregroundColor(.orange)
                         .opacity(badConnectionToggle ? 1 : 0.2)
                         .animation(.easeInOut(duration: 0.3).repeatForever(autoreverses: true), value: badConnectionToggle)
                         .onAppear {
