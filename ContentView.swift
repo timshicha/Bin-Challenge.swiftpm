@@ -200,19 +200,20 @@ struct ContentView: View {
     // angle. To minimize the error, this function uses a different
     // formula for angles less than 0 degrees and above 0 degrees.
     func intToAngle(integer: Int) -> Int {
+        print (integer)
         if(integer > 1910) {
             return -45
         }
         if(integer < 410) {
             return 45
         }
-        if(integer >= 1180) {
-            let zeroed = -(integer - 1180)
-            let angle = Int(Double(zeroed) / 17.111)
-            return angle;
+        if(integer >= 1060) {
+            let zeroed = -(integer - 1060)
+            let angle = Int(Double(zeroed) / 14.2)
+            return angle
         }
-        let zeroed = -(integer - 1180)
-        let angle = Int(Double(zeroed) / 16.222)
+        let zeroed = -(integer - 1060)
+        let angle = Int(Double(zeroed) / 14)
         return angle
     }
     
@@ -243,8 +244,8 @@ struct ContentView: View {
             showBadConnectionWarning = false
             timePreviousSuccessfulFetches = Date()
             // Scale the angles
-            upperArmAngle = roundToNearestN(intToAngle(integer: tempUpperArmAngle))
-            lowerArmAngle = roundToNearestN(intToAngle(integer: tempLowerArmAngle))
+            upperArmAngle = -roundToNearestN(intToAngle(integer: tempUpperArmAngle))
+            lowerArmAngle = -roundToNearestN(intToAngle(integer: tempLowerArmAngle))
         }
         // Find the coordinates of the elbow based on the angle
         elbowCoords = getLineCoords(startX: Float(shoulderCoords.x), startY: Float(shoulderCoords.y), angle: upperArmAngle + upperArmOffset, length: 50)
