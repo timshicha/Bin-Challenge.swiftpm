@@ -369,18 +369,6 @@ struct ContentView: View {
     
     var body: some View {
         VStack {
-
-            // Dropdown selection for warning and failure angles
-            Text(
-                showTimer ? msToFormattedString(ms: attemptTimer) :
-                    attemptingStart ? "Waiting to start" :
-                    attemptActive ? "Timer running" : "Timer stopped"
-            )
-                .frame(width: 160, alignment: .leading)
-                .foregroundColor(attemptingStart ? .white :
-                                    attemptActive ? .green : .red)
-                .font(.title2)
-                .bold()
             
             HStack {
                 Button (action: {
@@ -390,7 +378,7 @@ struct ContentView: View {
                     attemptTimer = 0
                 }) {
                     Text("Start")
-                        .padding(5)
+                        .padding(10)
                 }
                 .foregroundColor(Color.white)
                 .background(Color.green)
@@ -400,7 +388,7 @@ struct ContentView: View {
                     zeroSensors()
                 }) {
                     Text("Zero sensors")
-                        .padding(5)
+                        .padding(10)
                 }
                 .foregroundColor(Color.white)
                 .background(Color.green)
@@ -412,7 +400,7 @@ struct ContentView: View {
                     lowerArmOffset = 0
                 }) {
                     Text("Reset")
-                        .padding(5)
+                        .padding(10)
                 }
                 .foregroundColor(Color.white)
                 .background(Color.green)
@@ -423,6 +411,7 @@ struct ContentView: View {
                 .toggleStyle(SwitchToggleStyle())
                 .labelsHidden()
             }
+            .padding(.top, 15)
             // Two side by size containers
             HStack {
                 HStack {
@@ -454,7 +443,29 @@ struct ContentView: View {
                         }
                 }
             }
+            .padding(.horizontal, 5)
+
             
+            if(showTimer) {
+                Text(msToFormattedString(ms: attemptTimer))
+                    .foregroundColor(attemptingStart ? .white :
+                                        attemptActive ? .green: .red)
+                    .foregroundColor(attemptingStart ? .white :
+                                        attemptActive ? .green : .red)
+                    .frame(width: 160, alignment: .leading)
+                    .font(.title)
+                    .bold()
+            }
+            else {
+                Text(
+                    attemptingStart ? "Waiting to start" :
+                    attemptActive ? "Timer running" : "Timer stopped"
+                )
+                .foregroundColor(attemptingStart ? .white :
+                                    attemptActive ? .green : .red)
+                .font(.title)
+                .bold()
+            }
             
             GeometryReader { geometry in
                 let screenWidth = geometry.size.width;
