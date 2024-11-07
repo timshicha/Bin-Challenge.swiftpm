@@ -2,132 +2,6 @@ import SwiftUI
 import Foundation
 import Combine
 
-let DEFAULT_WARNING_ANGLE: Int = 10
-let DEFAULT_FAILURE_ANGLE: Int = 15
-// How long to wait (in seconds) for http response before timing out
-let FETCH_TIMEOUT: Double = 0.5
-// Longest time (seconds) allowed between successful http calls.
-let MAX_FETCH_INTERVAL: Double = 3.0
-
-// URLs to getting the angles from the controller
-let lowerArmUrl = "http://192.168.4.1/lowerArmAngle"
-let upperArmUrl = "http://192.168.4.1/upperArmAngle"
-
-let RED = Color(red: 145/255, green: 0/255, blue: 0/255)
-let ORANGE = Color(red: 210/255, green: 95/255, blue: 25/255)
-let GREEN = Color(red: 0/255, green: 120/255, blue: 0/255)
-    
-
-struct ArmPosition {
-    public var upperArmAngle: Int = 0
-    public var lowerArmAngle: Int = 0
-    
-    // Return whether the angles of the arms are within some degrees of 0
-    func anglesAreWithin(maxDifference: Int) -> Bool {
-        return lowerArmAngle > -maxDifference && lowerArmAngle < maxDifference && upperArmAngle > -maxDifference && upperArmAngle < maxDifference
-    }
-}
-
-extension View {
-    func hideKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    }
-}
-
-struct Attempt {
-    private var attemptActive: Bool
-    private var timeStarted: Date?
-    private var timeEnded: Date?
-    private var history: [ArmPosition]
-    private var warningAngle: Int
-    private var failureAngle: Int
-    
-    init(warningAngle: Int = DEFAULT_WARNING_ANGLE,
-         failureAngle: Int = DEFAULT_FAILURE_ANGLE) {
-        self.attemptActive = false
-        self.timeStarted = nil
-        self.timeEnded = nil
-        self.history = [ArmPosition] ()
-        self.warningAngle = warningAngle
-        self.failureAngle = failureAngle
-    }
-    
-    // If the arm is in proper position (green), the attempt starts, return self.
-    // Return 0 if attempt was not started.
-    mutating func startAttempt(armPosition: ArmPosition) -> Attempt? {
-        // If proper position
-        if (armPosition.anglesAreWithin(maxDifference: self.warningAngle)) {
-            // Record this angle and return success
-            self.history = [armPosition]
-            self.timeStarted = Date()
-            self.timeEnded = nil
-            self.attemptActive = true
-            return self
-        }
-        return nil
-    }
-    
-    // Provide another arm position. If arm is in red (failure) range, stop the
-    // attempt and return 0. Otherwise, return the number of milliseconds since
-    // the attempt was started (timer).
-    mutating func continueAttempt(armPosition: ArmPosition) -> Int {
-        // If proper angle
-        if (armPosition.anglesAreWithin(maxDifference: self.failureAngle)) {
-            // Record the angle and return the time
-            self.history.append(armPosition)
-            return Int(Double(Date().timeIntervalSince(self.timeStarted!)) * 1000)
-        }
-        self.timeEnded = Date()
-        self.attemptActive = false
-        return 0
-    }
-    
-    // Manually end the attempt (such as when the connection is lost)
-    mutating func endAttempt() -> Int {
-        let timeEnded = Date()
-        let timeStarted = self.timeStarted ?? Date()
-        self.timeEnded = timeEnded
-        self.attemptActive = false
-        print("end attempt")
-        return Int(Double(timeEnded.timeIntervalSince(timeStarted)) * 1000)
-    }
-    
-    func getHistory() -> [ArmPosition] {
-        return self.history
-    }
-}
-
-// Return milliseconds as string.
-// Ex: 63589 -> "1:03.589
-func msToFormattedString(ms: Int) -> String {
-    var ms = ms
-    let minutesInt = Int(floor(Double(ms) / 60000.0))
-    ms -= minutesInt * 60000
-    let secondsInt = Int(floor(Double(ms) / 1000.0))
-    ms -= secondsInt * 1000
-    let millisecondsInt = Int(ms)
-
-    let minutes = String(minutesInt)
-    var seconds = String(secondsInt)
-    var milliseconds = String(millisecondsInt)
-    // Pad with 0's where needed...
-    // Example: 3:5.123 -> 3:05.123
-    if(secondsInt < 10) {
-        seconds = "0\(secondsInt)"
-    }
-    if(millisecondsInt < 100) {
-        // Example: 3:05.2 -> 3:05.002
-        if(millisecondsInt < 10) {
-            milliseconds = "00\(millisecondsInt)"
-        }
-        // Example: 3:05.12 -> 3:05.012
-        else {
-            milliseconds = "0\(millisecondsInt)"
-        }
-    }
-    return "\(minutes):\(seconds).\(milliseconds)"
-}
-
 struct ContentView: View {
     @State private var upperArmAngle = Int(0)
     @State private var lowerArmAngle = Int(0)
@@ -155,14 +29,6 @@ struct ContentView: View {
     @State private var attemptTimer = 0
     @State private var attempt : Attempt? = nil
     
-    // Round int to nearest 5 (thanks chat GPT)
-    func roundToNearestN(_ number: Int, n: Int = 1) -> Int {
-        if(n == 1) {
-            return number
-        }
-        return n * Int(round(Double(number) / Double(n)))
-    }
-    
     // Determine what color the arm should be based on the
     // angle its bent
     func getColor(_ angle: Int) -> Color {
@@ -174,47 +40,6 @@ struct ContentView: View {
         } else {
             return GREEN
         }
-    }
-    
-    // Convert starting coords and angle to new coords
-    func getLineCoords(startX: Float, startY: Float, angle: Int, length: Float) -> CGPoint {
-        
-        // Convert angle to radians
-        let angleInRadians = Float(angle) * Float.pi / 180.0
-        // Calculate the change in x and y to next point
-        let deltaX = length * cos(angleInRadians)
-        let deltaY = length * sin(angleInRadians)
-        return CGPoint(x: CGFloat(startX + deltaX), y: CGFloat(startY + deltaY))
-    }
-    
-    // Convert CGPoint to a string
-    func CGPointToString(point: CGPoint) -> String {
-        return "(\(point.x), \(point.y))"
-    }
-    
-    // Microcontroller returns the value of the sensor as an int
-    // between 0 and 4095. Convert it to an angle between -45 and 45
-    // degrees.
-    // Notes:
-    // The sensor's output is not linearly proportional to the real
-    // angle. To minimize the error, this function uses a different
-    // formula for angles less than 0 degrees and above 0 degrees.
-    func intToAngle(integer: Int) -> Int {
-        print (integer)
-        if(integer > 1910) {
-            return -45
-        }
-        if(integer < 410) {
-            return 45
-        }
-        if(integer >= 1060) {
-            let zeroed = -(integer - 1060)
-            let angle = Int(Double(zeroed) / 14.2)
-            return angle
-        }
-        let zeroed = -(integer - 1060)
-        let angle = Int(Double(zeroed) / 14)
-        return angle
     }
     
     // Get the sensor angles by sending an http request to the
@@ -259,31 +84,6 @@ struct ContentView: View {
         lowerArmOffset = -lowerArmAngle
     }
     
-    // Fetch to get angle. Return the angle.
-    // If there's a connection issue or parsing error, return -1.
-    // Any value that's not -1 can be considered a valid output.
-    func fetchAngle(url: String) async -> Int {
-        
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = FETCH_TIMEOUT
-        config.timeoutIntervalForResource = FETCH_TIMEOUT
-        let session = URLSession(configuration: config)
-        var angle = 0
-        guard let url = URL(string: url) else { return 0 }
-        do {
-            let (data, response) = try await session.data(from: url)
-            if let httpResponse = response as? HTTPURLResponse {
-                // Get the angle
-                let result = String(data: data, encoding: .utf8) ?? "-1"
-                angle = Int(result) ?? -1
-            }
-        } catch {
-//            print("Error: \(error.localizedDescription)")
-            return -1
-        }
-        return angle
-    }
-    
     // Set the warning angle.
     // If the failure angle is lower, it the same
     func setWarningAngle(angle: Int) {
@@ -304,20 +104,6 @@ struct ContentView: View {
             }
         }
         failureAngle = angle
-    }
-    
-    // Provide two points and the context of a canvas to draw that line on the
-    // canvas.
-    func drawLine (from: CGPoint, to: CGPoint, context: GraphicsContext, color: Color = .gray) {
-        // Draw the body
-        let linePath = Path { path in
-            path.move(to: from)
-            path.addLine(to: to)
-        }
-        context.stroke(linePath,
-            with:
-                .color(color),
-                       style: StrokeStyle(lineWidth: 10, lineCap: .round))
     }
     
     func attemptStart () {

@@ -3,7 +3,7 @@
 
 // Set SSID and password for server
 const char* ssid = "Bin Challenge";
-const char* password = ""; // Set a password
+const char* password = ""; // Set the WiFi password (optional)
 int upperArmAngle = 0;
 int lowerArmAngle = 0;
 
@@ -60,8 +60,8 @@ void loop() {
     static unsigned long previousMillis = 0;
     unsigned long currentMillis = millis();
 
-    //
-    if (currentMillis - previousMillis >= 100) {
+    // Update the anlges every 50 milliseconds
+    if (currentMillis - previousMillis >= 50) {
         previousMillis = currentMillis;
         updateAngles();  // Send angle data
     }

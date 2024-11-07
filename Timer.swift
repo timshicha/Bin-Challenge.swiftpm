@@ -1,4 +1,6 @@
-struct Timer {
+import SwiftUI
+
+struct TimerTool {
     private var minutes: Int = 0
     private var seconds: Int = 0
     private var milliseconds: Int = 0
@@ -17,7 +19,7 @@ struct Timer {
     }
     
     func getSeconds () -> Int {
-        return self.getSeconds()
+        return self.seconds
     }
     
     func getMilliseconds () -> Int {
@@ -43,5 +45,6 @@ struct Timer {
                 milliseconds = "0\(milliseconds)"
             }
         }
+        return "\(minutes):\(seconds).\(milliseconds)"
     }
 }
