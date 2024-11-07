@@ -23,3 +23,16 @@ func intToAngle(integer: Int) -> Int {
     let angle = Int(Double(zeroed) / 14)
     return angle
 }
+
+// Determine what color the arm should be based on the
+// angle its bent
+func getColor(angle: Int, warningAngle: Int, failureAngle: Int) -> Color {
+    let angleFromZero = abs(angle);
+    if angleFromZero >= failureAngle {
+        return RED
+    } else if angleFromZero >= warningAngle {
+        return ORANGE
+    } else {
+        return GREEN
+    }
+}

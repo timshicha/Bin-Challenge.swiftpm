@@ -29,19 +29,6 @@ struct ContentView: View {
     @State private var attemptTimer = 0
     @State private var attempt : Attempt? = nil
     
-    // Determine what color the arm should be based on the
-    // angle its bent
-    func getColor(_ angle: Int) -> Color {
-        let angleFromZero = abs(angle);
-        if angleFromZero >= failureAngle {
-            return RED
-        } else if angleFromZero >= warningAngle {
-            return ORANGE
-        } else {
-            return GREEN
-        }
-    }
-    
     // Get the sensor angles by sending an http request to the
     // microcontroller.
     func fetchAngles() async {
@@ -293,7 +280,14 @@ struct ContentView: View {
                     var lowerArmPath = Path()
                     lowerArmPath.move(to: lowerArmStart)
                     lowerArmPath.addLine(to: lowerArmEnd)
-                    context.stroke(lowerArmPath, with: .color(getColor(lowerArmAngle + lowerArmOffset)), style: StrokeStyle(lineWidth: 18.0, lineCap: .round))
+                    context.stroke(lowerArmPath,
+                        with:
+                            .color(getColor(
+                                angle: lowerArmAngle + lowerArmOffset,
+                                warningAngle: warningAngle,
+                                failureAngle: failureAngle
+                                )),
+                        style: StrokeStyle(lineWidth: 18.0, lineCap: .round))
                     
                     // Draw the upper arm
                     let upperArmStart = CGPoint(x: shoulderCoords.x, y: shoulderCoords.y)
@@ -301,8 +295,14 @@ struct ContentView: View {
                     var upperArmPath = Path()
                     upperArmPath.move(to: upperArmStart)
                     upperArmPath.addLine(to: upperArmEnd)
-                    context.stroke(upperArmPath, with: .color(getColor(upperArmAngle + upperArmOffset)), style: StrokeStyle(lineWidth: 18.0, lineCap: .round))
-                    
+                    context.stroke(upperArmPath,
+                        with:
+                            .color(getColor(
+                                angle: upperArmAngle + upperArmOffset,
+                                warningAngle: warningAngle,
+                                failureAngle: failureAngle
+                                )),
+                            style: StrokeStyle(lineWidth: 18.0, lineCap: .round))
 
                     // Write the angles
                     let upperArmText = Text(verbatim: "\(-(upperArmAngle + upperArmOffset))°")
