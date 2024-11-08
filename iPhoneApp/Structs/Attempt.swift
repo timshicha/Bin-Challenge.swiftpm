@@ -1,5 +1,6 @@
 import SwiftUI
 
+// Keep track of an attempt state, time, and history.
 struct Attempt {
     private var attemptActive: Bool
     private var timeStarted: Date?

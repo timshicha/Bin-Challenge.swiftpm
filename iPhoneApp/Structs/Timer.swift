@@ -1,5 +1,6 @@
 import SwiftUI
 
+// Provided a time in milliseconds, return specific details about the time
 struct TimerTool {
     private var minutes: Int = 0
     private var seconds: Int = 0

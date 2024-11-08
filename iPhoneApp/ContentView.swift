@@ -3,12 +3,13 @@ import Foundation
 import Combine
 
 struct ContentView: View {
+    // Current angle of the arm sections (as read from sensors)
     @State private var upperArmAngle = Int(0)
     @State private var lowerArmAngle = Int(0)
     // Record the offset of angle from 0 (allows user to "zero" device)
     @State private var upperArmOffset = Int(0)
     @State private var lowerArmOffset = Int(0)
-    // Keep track of the most recent successful arm angle fetches.
+    
     @State private var timePreviousSuccessfulFetches = Date()
     @State private var showBadConnectionWarning = false
     @State private var badConnectionToggle = true
@@ -45,10 +46,8 @@ struct ContentView: View {
         // degree angle.
         if(tempUpperArmAngle == -1 || tempLowerArmAngle == -1) {
             showBadConnectionWarning = true
-//            print("bad connection")
             // See if too much time passed since last successful fetch
             if(Date().timeIntervalSince(timePreviousSuccessfulFetches) > MAX_FETCH_INTERVAL) {
-//                print("Too much time passed since last successful fetch.")
                 self.attemptEnd()
             }
         }
@@ -65,14 +64,12 @@ struct ContentView: View {
         wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle + lowerArmOffset, length: 50)
     }
     
-    // Whatever the current angle of the sensor is, make this 0 degrees
+    // "Zero" the sensors, i.e., adjust current position to be read as 0 degrees
     func zeroSensors() {
         upperArmOffset = -upperArmAngle
         lowerArmOffset = -lowerArmAngle
     }
     
-    // Set the warning angle.
-    // If the failure angle is lower, it the same
     func setWarningAngle(angle: Int) {
         if(angle >= failureAngle) {
             failureAngle = angle
@@ -80,12 +77,9 @@ struct ContentView: View {
         warningAngle = angle
     }
     
-    // Set the failure angle.
-    // If the warning angle is higher, make it the same
     func setFailureAngle(angle: Int) {
         if(angle <= warningAngle) {
             warningAngle = angle
-            // If warning angle is now less than 0, make it zero
             if (warningAngle < 0) {
                 warningAngle = 0
             }
@@ -144,6 +138,7 @@ struct ContentView: View {
         VStack {
             
             HStack {
+                // Start button
                 Button (action: {
                     attempt = Attempt(warningAngle: warningAngle, failureAngle: failureAngle)
                     attemptActive = false
@@ -157,6 +152,7 @@ struct ContentView: View {
                 .background(Color.green)
                 .cornerRadius(5)
                 
+                // Zero sensors button
                 Button (action: {
                     zeroSensors()
                 }) {
@@ -167,6 +163,7 @@ struct ContentView: View {
                 .background(Color.green)
                 .cornerRadius(5)
                 
+                // Reset button
                 Button (action: {
                     attemptTimer = 0
                     upperArmOffset = 0
@@ -179,14 +176,16 @@ struct ContentView: View {
                 .background(Color.green)
                 .cornerRadius(5)
                 
+                // Timer displayal
                 Text("Timer:")
                 Toggle("", isOn: $showTimer)
                 .toggleStyle(SwitchToggleStyle())
                 .labelsHidden()
             }
             .padding(.top, 15)
-            // Two side by size containers
+            // Container for user warning and failure angle inputs
             HStack {
+                // Warning angle input
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .resizable()
@@ -201,6 +200,7 @@ struct ContentView: View {
                             setWarningAngle(angle: Int(warningAngleInput) ?? DEFAULT_WARNING_ANGLE)
                         }
                 }
+                // Failure angle input
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .resizable()
@@ -218,7 +218,7 @@ struct ContentView: View {
             }
             .padding(.horizontal, 5)
 
-            
+            // Either show the timer or a message
             if(showTimer) {
                 Text(msToFormattedString(ms: attemptTimer))
                     .foregroundColor(attemptingStart ? .white :
@@ -240,6 +240,7 @@ struct ContentView: View {
                 .bold()
             }
             
+            // The canvas that draws the person and the arm
             GeometryReader { geometry in
                 let screenWidth = geometry.size.width;
                 let originalWidth: CGFloat = 200;
