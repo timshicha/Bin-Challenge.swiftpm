@@ -1,11 +1,30 @@
 import SwiftUI
 
-// Provided a time in milliseconds, return specific details about the time
+/// Tool that converts milliseconds into other time formats.
+///
+/// Functions:
+/// - *setTime(milliseconds)*
+/// - *getMinutes()*
+/// - *getSeconds()*
+/// - *getMilliseconds()*
+/// - *getTimeAsString()*
 struct TimerTool {
     private var minutes: Int = 0
     private var seconds: Int = 0
     private var milliseconds: Int = 0
     
+    /// Provide an optional time in milliseconds.
+    /// The milliseconds will be converted and stored as minutes, seconds, and milliseconds.
+    /// - Parameters:
+    ///  - milliseconds (optional)
+    init(milliseconds: Int = 0) {
+        setTime(milliseconds: milliseconds)
+    }
+    
+    /// Provide a time in milliseconds.
+    /// The milliseconds will be converted and stored as minutes, seconds, and milliseconds.
+    /// - Parameters:
+    ///  - milliseconds
     mutating func setTime(milliseconds: Int) {
         var ms = milliseconds
         self.minutes = Int(floor(Double(ms) / 60000.0))
@@ -15,18 +34,27 @@ struct TimerTool {
         self.milliseconds = Int(ms)
     }
     
+    /// Get the number of minutes.
+    /// - Returns: The number of minutes
     func getMinutes () -> Int {
         return self.minutes
     }
     
+    /// Get the number of seconds.
+    /// - Returns: The number of seconds
     func getSeconds () -> Int {
         return self.seconds
     }
     
+    /// Get the number of milliseconds.
+    /// - Returns: The number of milliseconds
     func getMilliseconds () -> Int {
         return self.milliseconds
     }
     
+    /// Get the time as a string in format "MM:SS.mmm".
+    /// Example: "1.32.007"
+    /// - Returns: The time as a string
     func getTimeAsString () -> String {
         let minutes = String(self.minutes)
         var seconds = String(self.seconds)

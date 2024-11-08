@@ -1,6 +1,12 @@
 import SwiftUI
 
-// Keep track of an attempt state, time, and history.
+/// Keep track of necessary variables related to an attempt and determine the state of an attempt.
+///
+/// Functions:
+/// - *init(warningAngle, failureAngle)*
+/// - *startAttempt(armPosition)*
+/// - *continueAttempt(armPosition)*
+/// - *endAttempt()*
 struct Attempt {
     private var attemptActive: Bool
     private var timeStarted: Date?
@@ -19,8 +25,10 @@ struct Attempt {
         self.failureAngle = failureAngle
     }
     
-    // If the arm is in proper position (green), the attempt starts, return self.
-    // Return 0 if attempt was not started.
+    /// Attempt to start at attempt. If both sections of the arm are in the green range (less than warningAngle), then the attempt will start.
+    /// - Parameters:
+    ///   - armPosition: The state of the current arm
+    /// - Returns: Self, or nil if the attempt was not started
     mutating func startAttempt(armPosition: ArmPosition) -> Attempt? {
         // If proper position
         if (armPosition.anglesAreWithin(maxDifference: self.warningAngle)) {
@@ -34,9 +42,10 @@ struct Attempt {
         return nil
     }
     
-    // Provide another arm position. If arm is in red (failure) range, stop the
-    // attempt and return 0. Otherwise, return the number of milliseconds since
-    // the attempt was started (timer).
+    /// Attempt to continue an attempt. If a section of the arm is in the failureAngle (red) range, the attempt will end.
+    /// - Parameters:
+    ///  - armPosition: The state of the current arm
+    /// - Returns: Milliseconds since the attempt was started, or 0 if the attemp was ended
     mutating func continueAttempt(armPosition: ArmPosition) -> Int {
         // If proper angle
         if (armPosition.anglesAreWithin(maxDifference: self.failureAngle)) {
@@ -49,16 +58,18 @@ struct Attempt {
         return 0
     }
     
-    // Manually end the attempt (such as when the connection is lost)
+    /// Manually end an attempt (such as on force end or connection loss)
+    /// - Returns: Milliseconds since the attempt was started
     mutating func endAttempt() -> Int {
         let timeEnded = Date()
         let timeStarted = self.timeStarted ?? Date()
         self.timeEnded = timeEnded
         self.attemptActive = false
-        print("end attempt")
         return Int(Double(timeEnded.timeIntervalSince(timeStarted)) * 1000)
     }
     
+    /// Get the history of the arm positions for this attempt.
+    /// - Returns: History of arm positions in a list
     func getHistory() -> [ArmPosition] {
         return self.history
     }
