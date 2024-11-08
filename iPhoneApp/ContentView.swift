@@ -55,13 +55,13 @@ struct ContentView: View {
             showBadConnectionWarning = false
             timePreviousSuccessfulFetches = Date()
             // Scale the angles
-            upperArmAngle = -roundToNearestN(intToAngle(integer: tempUpperArmAngle))
-            lowerArmAngle = -roundToNearestN(intToAngle(integer: tempLowerArmAngle))
+            upperArmAngle = -roundToNearestN(number: intToAngle(integer: tempUpperArmAngle))
+            lowerArmAngle = -roundToNearestN(number: intToAngle(integer: tempLowerArmAngle))
         }
         // Find the coordinates of the elbow based on the angle
-        elbowCoords = getLineCoords(startX: Float(shoulderCoords.x), startY: Float(shoulderCoords.y), angle: upperArmAngle + upperArmOffset, length: 50)
+        elbowCoords = getNextCoords(point: shoulderCoords, angle: upperArmAngle + upperArmOffset, length: 50)
         // Find the coordinates of the wrist based on the angle
-        wristCoords = getLineCoords(startX: Float(elbowCoords.x), startY: Float(elbowCoords.y), angle: lowerArmAngle + lowerArmOffset, length: 50)
+        wristCoords = getNextCoords(point: shoulderCoords, angle: lowerArmAngle + lowerArmOffset, length: 50)
     }
     
     // "Zero" the sensors, i.e., adjust current position to be read as 0 degrees

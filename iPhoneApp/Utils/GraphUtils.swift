@@ -6,19 +6,17 @@ import Combine
 ///
 /// We know where the arm section begins and the angle of the arm. We can use these details to find where the arm section will end.
 /// - Parameters:
-///  - startX: The X coordinate of the known point
-///  - startY: The Y coordinate of the known point
+///  - point: The coordinates of the known point
 ///  - angle: The angle of the arm
 ///  - length: The length of the arm
 /// - Returns: The coordinates of the next point
-func getLineCoords(startX: Float, startY: Float, angle: Int, length: Float) -> CGPoint {
-    
+func getNextCoords(point: CGPoint, angle: Int, length: Float) -> CGPoint {
     // Convert angle to radians
     let angleInRadians = Float(angle) * Float.pi / 180.0
     // Calculate the change in x and y to next point
     let deltaX = length * cos(angleInRadians)
     let deltaY = length * sin(angleInRadians)
-    return CGPoint(x: CGFloat(startX + deltaX), y: CGFloat(startY + deltaY))
+    return CGPoint(x: CGFloat(Float(point.x) + deltaX), y: CGFloat(Float(point.y) + deltaY))
 }
 
 /// Convert CGPoint to a string
