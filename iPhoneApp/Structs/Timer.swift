@@ -15,16 +15,12 @@ struct TimerTool {
     
     /// Provide an optional time in milliseconds.
     /// The milliseconds will be converted and stored as minutes, seconds, and milliseconds.
-    /// - Parameters:
-    ///  - milliseconds (optional)
     init(milliseconds: Int = 0) {
         setTime(milliseconds: milliseconds)
     }
     
     /// Provide a time in milliseconds.
     /// The milliseconds will be converted and stored as minutes, seconds, and milliseconds.
-    /// - Parameters:
-    ///  - milliseconds
     mutating func setTime(milliseconds: Int) {
         var ms = milliseconds
         self.minutes = Int(floor(Double(ms) / 60000.0))

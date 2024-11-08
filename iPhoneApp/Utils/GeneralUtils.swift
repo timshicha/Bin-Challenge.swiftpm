@@ -1,22 +1,26 @@
 import SwiftUI
 
-// Hide the keyboard when the user taps away on the screen
 extension View {
+    /// Hide the keyboard when the user taps away
     func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
-// Round int to nearest 5 (thanks chat GPT)
-func roundToNearestN(_ number: Int, n: Int = 1) -> Int {
+/// Round an integer to the nearest multiple of n.
+/// - Parameters:
+///  - number: the number to be rounded
+///  - n: the multiple to round to
+/// - Returns: Rounded integer
+func roundToNearestN(number: Int, n: Int = 1) -> Int {
     if(n == 1) {
         return number
     }
     return n * Int(round(Double(number) / Double(n)))
 }
 
-// Return milliseconds as string.
-// Ex: 63589 -> "1:03.589
+/// Convert milliseconds into a formatted time string. Example: 63589 -> "1:03.589
+/// - Returns: Formatted time string
 func msToFormattedString(ms: Int) -> String {
     var ms = ms
     let minutesInt = Int(floor(Double(ms) / 60000.0))

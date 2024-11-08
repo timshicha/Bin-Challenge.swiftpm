@@ -1,9 +1,8 @@
 import SwiftUI
 
-
-// Fetch to get angle. Return the angle.
-// If there's a connection issue or parsing error, return -1.
-// Any value that's not -1 can be considered a valid output.
+/// Fetch an angle from the endpoint.
+///
+/// - Returns: A sensor reading, which is between 0 and 4095, or -1 on error
 func fetchAngle(url: String) async -> Int {
     
     let config = URLSessionConfiguration.default
