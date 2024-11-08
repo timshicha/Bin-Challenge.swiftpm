@@ -3,31 +3,37 @@ import Foundation
 import Combine
 
 struct ContentView: View {
-    // Current angle of the arm sections (as read from sensors)
     @State private var upperArmAngle = Int(0)
     @State private var lowerArmAngle = Int(0)
-    // Record the offset of angle from 0 (allows user to "zero" device)
+    /// Natural offset from 0 degrees of the upper arm (used for "zeroing" the sensor)
     @State private var upperArmOffset = Int(0)
+    /// Natural offset from 0 degrees of the lower arm (used for "zeroing" the sensor)
     @State private var lowerArmOffset = Int(0)
-    
     @State private var timePreviousSuccessfulFetches = Date()
     @State private var showBadConnectionWarning = false
     @State private var badConnectionToggle = true
+    /// Timer for the attempt
     @State private var timer: AnyCancellable?
+    /// What is currently in the warning angle input field
     @State private var warningAngleInput = String(DEFAULT_WARNING_ANGLE)
+    /// What is currently in the failure angle input field
     @State private var failureAngleInput = String(DEFAULT_FAILURE_ANGLE)
     @State private var warningAngle = Int(DEFAULT_WARNING_ANGLE);
     @State private var failureAngle = Int(DEFAULT_FAILURE_ANGLE);
-    
-    // Coordinates of the arm
+    /// Coordinates of where the upper arm begins
     let shoulderCoords = CGPoint(x: 87.0, y: 89.0)
+    /// Coordinates of where the upper arm ends and lower arm begins
     @State private var elbowCoords = CGPoint(x: 137.0, y: 89.0)
+    /// Coordinates of where the lower arm ends
     @State private var wristCoords = CGPoint(x: 187.0, y: 89.0)
-    
+    /// Whether the user is attempting to start another attempt
     @State private var attemptingStart = false
+    /// Whether the current attempt is active
     @State private var attemptActive = false
     @State private var showTimer = true
+    /// Milliseconds since the attempt was started
     @State private var attemptTimer = 0
+    /// Stores basic info about an attempt
     @State private var attempt : Attempt? = nil
     
     // Get the sensor angles by sending an http request to the
@@ -39,8 +45,8 @@ struct ContentView: View {
         var tempUpperArmAngle = 0
         var tempLowerArmAngle = 0
         // Fetch the angles
-        tempUpperArmAngle = await fetchAngle(url: upperArmUrl)
-        tempLowerArmAngle = await fetchAngle(url: lowerArmUrl)
+        tempUpperArmAngle = await fetchAngle(url: UPPER_ARM_URL)
+        tempLowerArmAngle = await fetchAngle(url: LOWER_ARM_URL)
         // Convert the angles. The angles are given -1, or 0 - 4095.
         // If -1, it's an error. Otherwise, convert the value to a 0 - 45
         // degree angle.
