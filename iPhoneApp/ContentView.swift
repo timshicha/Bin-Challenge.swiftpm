@@ -67,7 +67,7 @@ struct ContentView: View {
         // Find the coordinates of the elbow based on the angle
         elbowCoords = getNextCoords(point: shoulderCoords, angle: upperArmAngle + upperArmOffset, length: 50)
         // Find the coordinates of the wrist based on the angle
-        wristCoords = getNextCoords(point: shoulderCoords, angle: lowerArmAngle + lowerArmOffset, length: 50)
+        wristCoords = getNextCoords(point: elbowCoords, angle: lowerArmAngle + lowerArmOffset, length: 50)
     }
     
     // "Zero" the sensors, i.e., adjust current position to be read as 0 degrees
